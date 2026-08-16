@@ -1,0 +1,159 @@
+# Интеграция с СОНИКС
+
+Сейчас СОНИКС — Django-монолит на `sonik.space`. Параллельно разрабатывается v2
+(FastAPI, `soniks-backend`), развёрнутый на `dev2.sonik.space`. Переход ожидается
+через несколько месяцев.
+
+Сервис работает с **боевым Django**, а не с dev2: на dev2 стоит ETL-реплика
+(`scripts/etl/*` — дамп прода, rsync, восстановление), и опубликованное там TLE
+не дошло бы до планирования наблюдений реальной сети.
+См. [decisions/009-prod-data.md](decisions/009-prod-data.md).
+
+---
+
+## Изоляция
+
+Всё, что специфично для текущего API, спрятано за одним интерфейсом:
+
+```
+application/interfaces/network_api.py     ← контракт
+infrastructure/network_api/django.py      ← сегодня
+infrastructure/network_api/v2.py          ← после переезда
+```
+
+Контракт формулируется в терминах предметной области, а не в терминах эндпоинтов:
+
+```python
+class NetworkApi(Protocol):
+    async def get_observation(self, observation_id: int) -> ObservationSnapshot: ...
+    async def list_observations(self, *, norad_id: int, since, until) -> list[...]: ...
+    async def get_latest_tle(self, norad_id: int) -> TleLines | None: ...
+    async def list_launch_objects(self, intdes: str) -> list[CatalogObject]: ...
+    async def publish_tle(self, *, norad_id: int, lines: TleLines,
+                          source: str, provenance: dict) -> int: ...
+```
+
+Переезд на v2 — одна новая реализация этого протокола.
+
+---
+
+## Что читаем сегодня
+
+### `GET /api/observations/{id}/`
+
+Публичный, без авторизации. Отдаёт всё нужное одним запросом:
+
+| Поле | Зачем |
+|---|---|
+| `tle` → `{tle0, tle1, tle2, updated, tle_source}` | опорное TLE для снятия доплера и затравка |
+| `station_lat`, `station_lng`, `station_alt` | положение наблюдателя. **Высота в метрах** |
+| `ground_station` | id станции |
+| `observation_frequency` | центральная частота, Гц |
+| `waterfall` | абсолютный URL PNG |
+| `start`, `end`, `norad_cat_id`, `vetted_status`, `waterfall_status` | |
+
+**TLE берётся отсюда, а не выскребается регуляркой со страницы наблюдения** —
+именно так делали оба старых инструмента, и это ломается при любой правке шаблона.
+
+Ответ целиком замораживается в `od_session_observations.meta` (правило 10).
+
+### `GET /api/observations/?...`
+
+Список для подбора наблюдений. Курсорная пагинация, тело — голый массив,
+ссылки в заголовке `Link`.
+
+### Водопад
+
+Скачивается по URL из `waterfall`, публичный S3. Файлы неизменяемы, поэтому
+кешируются на диске по `observation_id`.
+
+Наблюдения без `satnogs:wf-dat` в метаданных PNG непригодны: полоса
+невосстановима, поле `satnogs_rx_samp_rate` станции через API не отдаётся.
+Это вся история до июля 2026 и станции на клиентах старше 2.2.x.
+
+### Каталог для идентификации
+
+Объекты запуска — через `Launch` / INTDES (СОНИКС уже тянет их из Celestrak
+по `gp.php?INTDES=`). Полный активный каталог — кеш в `infrastructure/catalog/`.
+
+---
+
+## Что пишем
+
+### `POST /api/tles/` — новый эндпоинт
+
+Сегодня `/api/tles/` только на чтение, поэтому публикация требует правки монолита.
+Обойти это можно было бы только записью напрямую в чужую БД, что хуже.
+
+Тело: три строки TLE, `source="Fitted"`, сведения о происхождении
+(id прогона фита, участвовавшие наблюдения, RMS).
+
+Реализация **переиспользует готовое**, а не пишет заново:
+
+- `network/base/tasks.py::validate_tle` — контрольные суммы, согласованность номера
+  в обеих строках, диапазоны элементов;
+- `network/base/models.py::refresh_latest_tle_sets` — обновление `LatestTleSet`;
+- `network/base/tle_utils.py` — alpha-5 и OMM.
+
+Права: владелец или оператор спутника публикует, остальные — `propose`.
+
+---
+
+## Приоритет источника `Fitted`
+
+В `network/base/tle_priority.py` сейчас:
+
+```python
+TLE_SOURCE_PRIORITY = ["Manual", "SpaceTrack", "Celestrak", "SatNOGS"]
+```
+
+Становится:
+
+```python
+TLE_SOURCE_PRIORITY = ["Manual", "SpaceTrack", "Fitted", "Celestrak", "SatNOGS"]
+```
+
+`select_latest_tle` берёт первый источник, обновлённый в пределах окна свежести.
+Окно становится **посточниковым**: для `SpaceTrack` — одни сутки вместо семи.
+
+Смысл: при сходе с орбиты, когда Space-Track обновляется редко, свежий фит
+перебивает протухший каталог. При нормальной работе свежий Space-Track остаётся
+главнее фита.
+
+Без правки окна `Fitted` не выигрывал бы **никогда**, если Space-Track обновляется
+чаще раза в неделю — то есть ровно в том сценарии, ради которого он нужен.
+См. [decisions/010-fitted-priority.md](decisions/010-fitted-priority.md).
+
+---
+
+## Полный список правок монолита
+
+Намеренно минимальный: монолит выключают.
+
+1. `network/base/tle_priority.py` — `"Fitted"` в список, посточниковое окно свежести.
+2. `network/api/` — `POST /api/tles/` с проверкой прав.
+3. Ссылка на раздел со страницы наблюдения.
+4. `location /tle/` в nginx (правка на сервере, не в репозитории).
+
+Эндпоинт `/api/me/` **не нужен**: аутентификация идёт через Keycloak, который уже
+общий — в монолите стоит `mozilla-django-oidc` (`network/oidc.py`), в v2
+настроен `AUTH__KEYCLOAK__*`. Сервис валидирует JWT сам, одинаково до и после переезда.
+
+---
+
+## Аутентификация
+
+Keycloak JWT. Валидация копируется из `soniks-backend/src/presentation/api/auth/`.
+`sub` из токена — владелец сессии (`owner_sub`).
+
+Права на публикацию проверяются на стороне СОНИКС при вызове `POST /api/tles/`:
+сервис не хранит собственной модели прав и не дублирует роли.
+
+---
+
+## Что проверить перед боевым запуском
+
+- Нет ли лимита частоты запросов, который выбьет идентификация масштаба каталога
+  или массовое создание сессий.
+- Приемлема ли нагрузка на S3 от скачивания водопадов (кеш обязателен).
+- Админ-вид «опубликованные `Fitted` за 7 дней» — до первой боевой публикации.
