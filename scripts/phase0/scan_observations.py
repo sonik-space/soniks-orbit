@@ -32,8 +32,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parents[2] / "src"))
 
-from sonik_api import get_transmitter, iter_observations, peek_wf_dat  # noqa: E402
+from cache import get_transmitter, iter_observations, peek_wf_dat  # noqa: E402
 
 NARROWBAND_BAUD = (1200, 2400, 4800, 9600)
 

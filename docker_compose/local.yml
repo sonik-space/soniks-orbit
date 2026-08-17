@@ -1,0 +1,80 @@
+services:
+
+  orbit-postgres:
+    image: postgres:17.9-bookworm
+    container_name: orbit-postgres
+    environment:
+      POSTGRES_DB: soniks_orbit
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: "soniks"
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - orbit_postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d soniks_orbit"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  orbit-rabbitmq:
+    image: rabbitmq:4.1.4-management
+    container_name: orbit-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "127.0.0.1:5673:5672"
+    volumes:
+      - orbit_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep beam || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  orbit-api:
+    build: ../
+    container_name: orbit-api
+    env_file: ../.env
+    command: "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    depends_on:
+      orbit-postgres:
+        condition: service_healthy
+      orbit-rabbitmq:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ../src:/app/src
+      - orbit_waterfalls:/var/cache/soniks-orbit/waterfalls
+    healthcheck:
+      # curl нет в облегчённом образе, поэтому проверяем стандартной urllib
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  orbit-taskiq:
+    build: ../
+    container_name: orbit-taskiq
+    env_file: ../.env
+    command: "taskiq worker infrastructure.tasks.broker:broker infrastructure.tasks --reload"
+    depends_on:
+      orbit-postgres:
+        condition: service_healthy
+      orbit-rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ../src:/app/src
+      # Кеш общий с API: файлы неизменяемы, качать дважды незачем
+      - orbit_waterfalls:/var/cache/soniks-orbit/waterfalls
+
+# Планировщика (taskiq scheduler) нет: периодических задач у сервиса пока нет.
+# Redis, MinIO, sqladmin, prometheus и OTLP из soniks-backend не берутся
+# по той же причине — под них нет сценария.
+volumes:
+  orbit_postgres_data:
+  orbit_rabbitmq_data:
+  orbit_waterfalls:

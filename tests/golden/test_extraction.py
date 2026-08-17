@@ -19,29 +19,26 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from PIL import Image
 
+from application.services.extraction import Extraction, extract_track
 from domain.waterfall.axes import tick_step_px
-from end_to_end import measure_waterfall
-from domain.waterfall.metadata import WaterfallMeta
+from infrastructure.images.loader import decode
 
 HERE = Path(__file__).parent
 WATERFALLS = HERE / "waterfalls"
 GOLDEN = json.loads((HERE / "extraction.json").read_text(encoding="utf-8"))
 
 
-def _measure(observation_id: str) -> dict:
-    img = Image.open(WATERFALLS / f"wf_{observation_id}.png")
+def _measure(observation_id: str) -> Extraction:
+    rgb, meta = decode(WATERFALLS / f"wf_{observation_id}.png")
     obs = json.loads(
         (WATERFALLS / f"obs_{observation_id}.json").read_text(encoding="utf-8")
     )
-    return measure_waterfall(
-        np.asarray(img.convert("RGB")), WaterfallMeta.from_png_text(img.info), obs
-    )
+    return extract_track(rgb, meta, obs)
 
 
 @pytest.fixture(scope="module", params=sorted(GOLDEN))
-def case(request) -> tuple[dict, dict]:
+def case(request) -> tuple[Extraction, dict]:
     return _measure(request.param), GOLDEN[request.param]
 
 
@@ -49,10 +46,10 @@ def test_axes_box_is_exact(case) -> None:
     """Рамка — единственное, что обязано совпадать до пикселя: она детектируется,
     а не считается, и именно она ломается от правок вёрстки в клиенте."""
     got, want = case
-    box = got["box"]
+    box = got.box
     assert [box.left, box.right, box.top, box.bottom] == want["box"]
     assert [box.cb_left, box.cb_right] == want["colorbar"]
-    assert list(got["shape"][:2]) == want["shape"]
+    assert list(got.shape[:2]) == want["shape"]
 
 
 def test_time_ticks_are_evenly_spaced(case) -> None:
@@ -61,7 +58,7 @@ def test_time_ticks_are_evenly_spaced(case) -> None:
     Разброс больше означает, что в узкую полосу поиска попало что-то ещё:
     подпись времени, край рамки, оверлей."""
     got, want = case
-    ticks = got["ticks"]
+    ticks = got.ticks
     assert ticks.size == want["ticks"]
     assert tick_step_px(ticks) == pytest.approx(want["tick_step_px"], abs=0.05)
     assert np.std(np.diff(ticks)) <= 0.5
@@ -69,8 +66,8 @@ def test_time_ticks_are_evenly_spaced(case) -> None:
 
 def test_colorbar_lut(case) -> None:
     got, want = case
-    assert got["lut_len"] == want["lut_len"]
-    assert got["overlay_frac"] == pytest.approx(want["overlay_frac"], abs=0.002)
+    assert got.lut_len == want["lut_len"]
+    assert got.overlay_frac == pytest.approx(want["overlay_frac"], abs=0.002)
 
 
 def test_track_length(case) -> None:
@@ -78,9 +75,9 @@ def test_track_length(case) -> None:
     вдвое означает, что сломался поиск гребня."""
     got, want = case
     if want["points"] == 0:
-        assert got["points"] == 0, "здесь трека быть не должно"
+        assert len(got.points) == 0, "здесь трека быть не должно"
         return
-    assert got["points"] == pytest.approx(want["points"], rel=0.2)
+    assert len(got.points) == pytest.approx(want["points"], rel=0.2)
 
 
 def test_rms_against_the_observation_tle(case) -> None:
@@ -91,9 +88,9 @@ def test_rms_against_the_observation_tle(case) -> None:
     got, want = case
     if want["points"] == 0:
         return
-    assert got["convention"] == want["convention"]
-    assert got["rms_khz"] == pytest.approx(want["rms_khz"], rel=0.1)
-    assert got["margin"] >= want["margin_at_least"]
+    assert got.convention == want["convention"]
+    assert got.rms_khz == pytest.approx(want["rms_khz"], rel=0.1)
+    assert got.margin >= want["margin_at_least"]
 
 
 def test_reference_observation_holds_its_number() -> None:
@@ -105,5 +102,5 @@ def test_reference_observation_holds_its_number() -> None:
     к decisions/011.
     """
     got = _measure("1527888")
-    assert got["rms_khz"] < 0.0251
-    assert got["margin"] > 200
+    assert got.rms_khz < 0.0251
+    assert got.margin > 200

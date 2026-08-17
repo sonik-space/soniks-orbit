@@ -26,9 +26,10 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "phase0"))
+sys.path.insert(0, str(Path(__file__).parents[2] / "src"))
 
+from cache import CACHE, get_observation  # noqa: E402
 from end_to_end import measure  # noqa: E402
-from sonik_api import CACHE  # noqa: E402
 
 REFERENCE_ID = 1527888
 REFERENCE_RMS_KHZ = 0.0250
@@ -50,18 +51,19 @@ def signal_tag(meta) -> str:
     return meta.modulation[:7] or "—"
 
 
-def axis_regression(result: dict) -> tuple[float, float]:
+def axis_regression(result) -> tuple[float, float]:
     """Коэффициент регрессии `f_offset` на предсказанный доплер и R².
 
     Открытый вопрос 9: если ось частот инвертирована у всей сети, коэффициент
-    везде близок к −1; если это свойство станции, он разделится по станциям.
+    везде близок к −1; если это свойство станции, он разделился бы по станциям.
     Предсказанный доплер берётся на центральной частоте наблюдения, поэтому
     коэффициент безразмерный и сравним между наблюдениями.
     """
-    doppler_hz = -result["meta"].center_freq_hz * result["v_km_s"] / C_KM_S
-    k, b = np.polyfit(doppler_hz, result["f_offset_hz"], 1)
-    resid = result["f_offset_hz"] - (k * doppler_hz + b)
-    total = result["f_offset_hz"] - result["f_offset_hz"].mean()
+    f_offset = result.points.f_offset_hz
+    doppler_hz = -result.meta.center_freq_hz * result.v_km_s / C_KM_S
+    k, b = np.polyfit(doppler_hz, f_offset, 1)
+    resid = f_offset - (k * doppler_hz + b)
+    total = f_offset - f_offset.mean()
     r2 = 1.0 - float(np.sum(resid**2) / np.sum(total**2))
     return float(k), r2
 
@@ -88,23 +90,23 @@ def main() -> int:
             print(f"{oid:>10} {'':>4} {'':>5} {'—':>6}   {type(exc).__name__}: {exc}")
             continue
 
-        station = r["obs"].get("ground_station")
-        tag = signal_tag(r["meta"])
-        if r["points"] == 0:
-            print(f"{oid:>10} {station:>4} {tag:>7} {'—':>6}   пусто")
-            continue
-        if "sgp4_errors" in r:
+        station = get_observation(oid).get("ground_station")
+        tag = signal_tag(r.meta)
+        if r.sgp4_errors:
             print(f"{oid:>10} {station:>4} {tag:>7} {'—':>6}   "
-                  f"SGP4: ошибок {r['sgp4_errors']}")
+                  f"SGP4: ошибок {r.sgp4_errors}")
+            continue
+        if len(r.points) == 0:
+            print(f"{oid:>10} {station:>4} {tag:>7} {'—':>6}   пусто")
             continue
 
         ok += 1
         if oid == REFERENCE_ID:
-            reference_rms = r["rms_khz"]
+            reference_rms = r.rms_khz
         k, r2 = axis_regression(r)
-        print(f"{oid:>10} {station:>4} {tag:>7} {r['points']:>6} "
-              f"{r['rms_khz']:>8.4f} {min(r['margin'], 9999):>6.0f} "
-              f"{k:>7.3f} {r2:>6.3f}  {r['convention']}")
+        print(f"{oid:>10} {station:>4} {tag:>7} {len(r.points):>6} "
+              f"{r.rms_khz:>8.4f} {min(r.margin, 9999):>6.0f} "
+              f"{k:>7.3f} {r2:>6.3f}  {r.convention}")
 
     print("-" * 88)
     print(f"покрытие {ok} из {len(ids)}")

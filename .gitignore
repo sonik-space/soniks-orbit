@@ -12,3 +12,6 @@ tests/regression/cdriver/driver
 
 # кеш скачанных водопадов и JSON наблюдений
 scripts/phase0/cache/
+
+# .env локальный, в репозиторий не едет
+.env

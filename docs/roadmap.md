@@ -161,17 +161,55 @@
 
 ---
 
-## Фаза 2 — скелет сервиса
+## Фаза 2 — скелет сервиса — **закрыта**
 
-- [ ] `pyproject.toml`, `docker_compose/`, `Makefile` по образцу `soniks-backend`
-- [ ] `core/configs/*`, `core/containers/*`, `app.py` — копируются из `soniks-backend`
-- [ ] Валидация Keycloak JWT
-- [ ] `infrastructure/network_api/django.py` + `application/interfaces/network_api.py`
-- [ ] `infrastructure/images/loader.py` (PIL) + дисковый кеш PNG по `observation_id`
-- [ ] Alembic и четыре таблицы из [data-model.md](data-model.md)
-- [ ] taskiq: задача извлечения трека
-- [ ] `POST /sessions`, `GET /sessions/{uuid}`, `GET .../track`
-- [ ] Демонстрация: `curl` создаёт сессию и получает откалиброванные точки
+Библиотека стала сервисом. Оба числа фаз 0 и 1 неподвижны — 0.0250 кГц
+на 1527888 при запасе ×225 и покрытие 11 из 23, — и то же 0.0250 теперь
+приезжает по HTTP, а не только из стенда. Тестов 141 (было 134).
+
+Корень импортов остался **плоским** (`from domain...`, `from application...`),
+а не `src.` как в `soniks-backend`: 134 зелёных теста и оба стенда при этом
+не тронуты, а копируемые файлы правятся один раз. Цена — `PYTHONPATH=/app/src`
+в `Dockerfile`.
+
+- [x] `pyproject.toml`, `docker_compose/local.yml`, `Makefile`, `Dockerfile`,
+      `env.example`. Из `soniks-backend` взято только нужное: postgres,
+      rabbitmq, api, taskiq-воркер. Redis и fastapi-cache, sqladmin, minio/S3,
+      prometheus, OTLP и scheduler не берутся — под них нет сценария
+- [x] `core/configs/{app,database,auth,broker,logging,cors,network_api,waterfall}.py`,
+      `core/containers/*`, `app.py`, `main.py`. `core/configs/fit.py` заводится
+      в фазе 4 вместе с эндпоинтом фита
+- [x] Валидация Keycloak JWT — `infrastructure/auth/keycloak.py`, перенос
+      из `soniks-backend` без ветки админ-панели. Наружу торчит только `sub`:
+      прав на публикацию сервис не хранит, их проверяет СОНИКС
+- [x] `application/services/extraction.py` — **единственное место сшивки**
+      (правило 8). `measure_waterfall` переехала из `scripts/phase0/end_to_end.py`
+      **перемещением**, стенды и golden-тесты зовут теперь оттуда.
+      `f_abs_hz` считается одной формулой ядра `received_freq_hz`,
+      а перебор четырёх конвенций стал тем, чем и был задуман, —
+      диагностикой: наружу идут `convention` и `margin`
+- [x] `infrastructure/network_api/django.py` + `application/interfaces/network_api.py`.
+      `scripts/phase0/sonik_api.py` **удалён**: клиент существует в одной копии,
+      стенды ходят через него же (`scripts/phase0/cache.py`, дисковый кеш корпуса).
+      При переносе исправлен разбор заголовка `Link`: бралась первая ссылка
+      в заголовке, а не помеченная `rel="next"`, и на странице, где первым
+      идёт `prev`, обход пошёл бы назад
+- [x] `infrastructure/images/loader.py` (PIL) + дисковый кеш PNG
+      по `observation_id`, общий у API и воркера
+- [x] Alembic и четыре таблицы из [data-model.md](data-model.md).
+      `upgrade head` и `downgrade base` проверены на пустой базе
+- [x] taskiq: задача извлечения трека
+- [x] `POST /sessions`, `GET /sessions/{uuid}`, `GET .../track`, `GET /health`
+- [x] Демонстрация `scripts/phase2/demo.sh` (`make demo`). На 1527888 —
+      362 точки, `rms_khz` 0.024958, запас 224.9, то же число, что у стенда
+
+Три состояния проверены на боевых данных, а не только в тестах:
+
+| Наблюдение | Что вернулось | Почему так правильно |
+|---|---|---|
+| 1527888 | `ok`, 362 точки, 0.0250 кГц | основной путь |
+| 1524589 | `ok`, **0 точек**, диагностика `null` | «ничего не нашло» — нормальное состояние (decisions/001), а ноль в RMS читался бы как измеренное значение |
+| 1000000 | `failed`, «нет `satnogs:wf-dat`…» | наблюдение до июля 2026, полоса невосстановима; UI обязан объяснять причину, а не показывать ошибку |
 
 ---
 
@@ -249,6 +287,12 @@
   Условия возврата перечислены в шапке 011.
 - **Поддержка наблюдений без `satnogs:wf-dat`** (история до июля 2026 и станции
   на клиентах старше 2.2.x). Полоса невосстановима, помечаются непригодными.
+- **Прогон `ruff format` по всему репозиторию.** Код фаз 0 и 1 писался
+  до появления ruff в проекте и выровнен руками, поэтому форматтер даёт
+  диффом весь репозиторий. Делать это надо отдельным коммитом, а не смешивать
+  с содержательной правкой, поэтому `make lint` пока проверяет только
+  `ruff check`. Каталог `docs/` исключён из ruff навсегда: форматтер
+  переписывает python-блоки внутри markdown, а там выравнивание — часть текста.
 
 ---
 

@@ -36,9 +36,30 @@ Postgres, SQLAlchemy 2 (async). Миксины `UUIDMixin` / `TimestampMixin` б
 | `calibration` | JSONB, null | рамка осей, `f_min/f_max`, `t0`, `row_dt`, `nchan` |
 | `extraction_status` | str | `pending` / `running` / `ok` / `failed` |
 | `extraction_error` | str, null | |
+| `diagnostics` | JSONB, null | диагностика извлечения, см. ниже |
 | `points` | JSONB, null | точки трека, см. ниже |
 
 Уникальный индекс `(session_uuid, observation_id)`.
+
+Колонка `diagnostics` добавлена в фазе 2: без неё качество извлечения
+показать было негде. Прогон фита сюда не относится — он лежит в `od_fit_runs`,
+а здесь RMS **относительно TLE самого наблюдения**, где профилируется только
+несущая и элементы не двигаются:
+
+```json
+{ "rms_khz": 0.024958, "carrier_hz": 435976647.5,
+  "convention": "сырой, ось инвертирована", "margin": 224.87,
+  "reliable": true, "overlay_frac": 0.00176, "sgp4_errors": 0,
+  "age_days": 0.53 }
+```
+
+`convention` и `margin` — перебор четырёх конвенций оси частот, оставшийся
+диагностикой ([algorithms.md](algorithms.md) §3): сам `f_abs_hz` считается
+одной формулой ядра, а запас порядка единицы означает, что варианты
+неразличимы, то есть трек ненадёжен, и это показывается пользователю.
+
+При пустом треке числовые поля **null**, а не ноль: ноль читался бы
+как измеренное значение.
 
 ### `od_fit_runs`
 

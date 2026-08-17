@@ -6,19 +6,42 @@ description = "Определение орбитальных параметро�
 # uv молча взять 3.14 и разойтись со стеком, на котором поедет сервис.
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    # ядро (правило 1: больше ему ничего не нужно)
     "numpy>=2.0",
     "scipy>=1.13",
     "sgp4>=2.23",
+    # инфраструктура
     "pillow>=10.0",
-    "requests>=2.31",
+    "httpx>=0.28",
+    "alembic>=1.16",
+    "asyncpg>=0.30",
+    "sqlalchemy[asyncio]>=2.0.41",
+    "taskiq-aio-pika>=0.4.3",
+    "taskiq[reload]>=0.12",
+    # сервис
+    "dishka>=1.9",
+    "fastapi>=0.115",
+    "pydantic-settings>=2.10",
+    "pyjwt[crypto]>=2.10",
+    "uvicorn>=0.41",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.15"]
 
-# Фаза 0: библиотека не собирается и не ставится, ядро импортируется из src/.
+# Библиотека не собирается и не ставится, ядро импортируется из src/.
+# Корень импортов плоский: `from domain...`, `from application...`,
+# а не `from src....` как в soniks-backend.
 [tool.uv]
 package = false
+
+[tool.ruff]
+# Иначе `ruff format` переписывает python-блоки внутри markdown: в docs/
+# они выровнены руками под чтение, и формат там — часть текста, а не код.
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

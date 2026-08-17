@@ -45,11 +45,21 @@ FastAPI, префикс `/api/v1`. Все маршруты требуют Keyclo
       "station_name": "Сампо-400 [R1NAV]", "ground_station": 13,
       "waterfall_url": "https://storage.yandexcloud.net/...",
       "max_altitude": 74.2,
-      "extraction_status": "ok", "n_points": 384,
-      "rms_khz": 0.44, "carrier_hz": 435975120.5 } ],
+      "extraction_status": "ok", "extraction_error": null, "n_points": 384,
+      "rms_khz": 0.44, "carrier_hz": 435975120.5,
+      "convention_margin": 224.9 } ],
   "latest_fit": { "fit_run_id": "...", "rms_khz": 0.42,
                   "elements_out": { }, "tle": { } } }
 ```
+
+До фита `rms_khz` и `carrier_hz` — это диагностика **извлечения**: невязка
+относительно TLE самого наблюдения, где профилируется только несущая
+и элементы не двигаются. `convention_margin` — запас между лучшей и следующей
+конвенцией оси частот; порядок единицы означает, что варианты неразличимы,
+то есть трек ненадёжен ([algorithms.md](algorithms.md) §3). При пустом треке
+все три **null**, а не ноль.
+
+`latest_fit` появляется в фазе 4 вместе с эндпоинтом фита.
 
 ### `DELETE /api/v1/sessions/{uuid}`
 
@@ -71,7 +81,8 @@ FastAPI, префикс `/api/v1`. Все маршруты требуют Keyclo
     "plot_left": 81, "plot_top": 15, "plot_w": 600, "plot_h": 1546,
     "t_min": "2026-08-16T10:32:52.930Z", "t_max": "2026-08-16T10:39:09.100Z",
     "f_min_hz": -28800.0, "f_max_hz": 28743.75,
-    "center_freq_hz": 435973500.0, "samp_rate": 57600, "bin_hz": 56.25 },
+    "center_freq_hz": 435973500.0, "samp_rate": 57600, "nchan": 1024,
+    "bin_hz": 56.25 },
   "waterfall_url": "https://storage.yandexcloud.net/...",
   "points": {
     "mjd": [], "f_abs_hz": [], "f_offset_hz": [],
@@ -82,6 +93,14 @@ FastAPI, префикс `/api/v1`. Все маршруты требуют Keyclo
 `calibration` — рамка осей, найденная сервисом, плюс параметры сетки.
 Всё, что нужно фронту, чтобы обрезать картинку по рамке и линейно отображать
 экран в данные. **Своей геометрии фронт не вычисляет и картинку не анализирует.**
+
+`nchan` нужен потому, что `extent` задаёт координаты **центров** первого
+и последнего канала, а не внешние края: без числа каналов отображение
+пиксель → частота воспроизводится с постоянным сдвигом в полканала
+([algorithms.md](algorithms.md) §1.5).
+
+`status: "ok"` при пустом `points` — **нормальное** состояние, а не ошибка
+(decisions/001): на корпусе так на 12 наблюдениях из 23.
 
 ### `PUT /api/v1/sessions/{uuid}/observations/{observation_id}/track`
 
