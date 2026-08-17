@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# граф знаний, генерируется
+graphify-out/
+
+# сборка C-драйвера регрессии
+*.o
+tests/regression/cdriver/driver
+
+# кеш скачанных водопадов и JSON наблюдений
+scripts/phase0/cache/

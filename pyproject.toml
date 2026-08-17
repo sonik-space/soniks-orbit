@@ -1,0 +1,25 @@
+[project]
+name = "soniks-orbit"
+version = "0.0.0"
+description = "Определение орбитальных параметров по наблюдениям сети СОНИКС"
+# Python 3.12 — как в soniks-backend (правило 12). Верхняя граница не даёт
+# uv молча взять 3.14 и разойтись со стеком, на котором поедет сервис.
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "sgp4>=2.23",
+    "pillow>=10.0",
+    "requests>=2.31",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+# Фаза 0: библиотека не собирается и не ставится, ядро импортируется из src/.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
