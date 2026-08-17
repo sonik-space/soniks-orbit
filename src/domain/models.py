@@ -45,6 +45,18 @@ class ObservationTrack:
 
 
 @dataclass(frozen=True)
+class SessionSummary:
+    """Строка списка сессий. Точки не читаются: они лежат блоком в JSONB,
+    и списку от них нужно только количество наблюдений."""
+
+    uuid: UUID
+    name: str
+    norad_id: int | None
+    status: str
+    n_observations: int
+
+
+@dataclass(frozen=True)
 class OdSession:
     uuid: UUID
     name: str

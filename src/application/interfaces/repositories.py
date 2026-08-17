@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 from uuid import UUID
 
-from domain.models import ObservationTrack, OdSession
+from domain.models import ObservationTrack, OdSession, SessionSummary
 
 
 class SessionRepository(Protocol):
@@ -32,6 +32,11 @@ class SessionRepository(Protocol):
 
     async def get(self, session_uuid: UUID) -> OdSession | None: ...
 
+    async def list_for_owner(self, owner_sub: str, limit: int) -> list[SessionSummary]:
+        """Сессии одного человека, новые сверху. Точки не читаются: списку
+        нужны только шапка сессии и число наблюдений."""
+        ...
+
     async def get_observation(
         self, session_uuid: UUID, observation_id: int
     ) -> ObservationTrack | None: ...
@@ -46,3 +51,11 @@ class SessionRepository(Protocol):
         points: dict | None = None,
         diagnostics: dict | None = None,
     ) -> None: ...
+
+    async def save_points(
+        self, observation_uuid: UUID, *, points: dict, diagnostics: dict
+    ) -> None:
+        """Правка трека человеком: меняются точки и диагностика, всё остальное
+        остаётся. Отдельно от `save_extraction`, которая пишет результат
+        извлечения целиком и умолчаниями `None` стирает калибровку."""
+        ...

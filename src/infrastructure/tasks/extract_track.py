@@ -31,6 +31,8 @@ async def extract_track_task(
     images: FromDishka[WaterfallImages],
     transaction: FromDishka[Transaction],
     waterfall_settings: FromDishka[WaterfallSettings],
+    snr_threshold: float | None = None,
+    bin_seconds: float | None = None,
 ) -> None:
     track = await repo.get_observation(UUID(session_uuid), observation_id)
     if track is None:
@@ -49,7 +51,11 @@ async def extract_track_task(
         repo=repo,
         transaction=transaction,
         track=track,
-        snr_threshold=waterfall_settings.SNR_THRESHOLD,
-        bin_seconds=waterfall_settings.BIN_SECONDS,
+        snr_threshold=(
+            waterfall_settings.SNR_THRESHOLD if snr_threshold is None else snr_threshold
+        ),
+        bin_seconds=(
+            waterfall_settings.BIN_SECONDS if bin_seconds is None else bin_seconds
+        ),
     )
     logger.info("Извлечение по наблюдению %s завершено", observation_id)

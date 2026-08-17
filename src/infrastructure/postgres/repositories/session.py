@@ -1,11 +1,11 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.interfaces.repositories import SessionRepository
-from domain.models import ObservationTrack, OdSession, TleLines
+from domain.models import ObservationTrack, OdSession, SessionSummary, TleLines
 from infrastructure.postgres.models.orbit import (
     OdSessionObservationORM,
     OdSessionORM,
@@ -61,6 +61,27 @@ class SQLAlchemySessionRepository(SessionRepository):
         ).scalars()
         return _to_session(orm, list(rows))
 
+    async def list_for_owner(self, owner_sub: str, limit: int) -> list[SessionSummary]:
+        n_observations = (
+            select(func.count())
+            .select_from(OdSessionObservationORM)
+            .where(OdSessionObservationORM.session_uuid == OdSessionORM.uuid)
+            .scalar_subquery()
+        )
+        rows = await self._session.execute(
+            select(
+                OdSessionORM.uuid,
+                OdSessionORM.name,
+                OdSessionORM.norad_id,
+                OdSessionORM.status,
+                n_observations,
+            )
+            .where(OdSessionORM.owner_sub == owner_sub)
+            .order_by(OdSessionORM.created_at.desc())
+            .limit(limit)
+        )
+        return [SessionSummary(*row) for row in rows]
+
     async def get_observation(
         self, session_uuid: UUID, observation_id: int
     ) -> ObservationTrack | None:
@@ -91,6 +112,17 @@ class SQLAlchemySessionRepository(SessionRepository):
         row.extraction_status = status
         row.extraction_error = error
         row.calibration = calibration
+        row.points = points
+        row.diagnostics = diagnostics
+
+    async def save_points(
+        self, observation_uuid: UUID, *, points: dict, diagnostics: dict
+    ) -> None:
+        row = await self._session.get(OdSessionObservationORM, observation_uuid)
+        if row is None:
+            return
+        # Присваивается новый словарь, а не правится старый: JSONB без
+        # `MutableDict` изменение на месте не заметит и молча не сохранит.
         row.points = points
         row.diagnostics = diagnostics
 

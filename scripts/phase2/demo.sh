@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# Демонстрация фазы 2: curl создаёт сессию и получает откалиброванные точки.
+# Демонстрация: curl создаёт сессию, получает откалиброванные точки,
+# правит их руками и перезапускает извлечение.
 #
 #     make up && make migrate && make demo
 #
-# Ожидаемый результат на наблюдении 1527888 — 362 точки и RMS 0.0250 кГц,
-# то же число, что даёт стенд `scripts/phase0/end_to_end.py`, но полученное
-# через HTTP: это и есть проверка, что цепочка доехала до сервиса целиком.
+# Шаги 1-3 — фаза 2. Ожидаемый результат на наблюдении 1527888 — 362 точки
+# и RMS 0.0250 кГц, то же число, что даёт стенд `scripts/phase0/end_to_end.py`,
+# но полученное через HTTP: это и есть проверка, что цепочка доехала
+# до сервиса целиком.
+#
+# Шаги 4-5 — фаза 3. Проверяют два свойства, которые иначе всплыли бы
+# только в бою: `f_abs_hz` считает сервер, а не клиент (правило 9),
+# и ручная точка переживает повторное извлечение.
 set -euo pipefail
 
 BASE=${BASE:-http://localhost:8000/api/v1}
@@ -45,4 +51,88 @@ print("точек:", n)
 for i in ({0, n // 2, n - 1} if n else set()):
     print("  [{:>4}] mjd {:.6f}  f_abs {:.1f} Гц  смещение {:+.1f} Гц  вес {:.2f}".format(
         i, p["mjd"][i], p["f_abs_hz"][i], p["f_offset_hz"][i], p["weight"][i]))
+'
+
+TRACK="${BASE}/sessions/${UUID}/observations/${OBS}/track"
+MANUAL_OFFSET_HZ=1234.5
+
+echo
+echo "4. PUT ${TRACK}  — добавляем ручную точку"
+curl -fsS "${TRACK}" | python3 -c "
+import json, sys
+
+t = json.load(sys.stdin)
+c, p = t['calibration'], t['points']
+if not c:
+    sys.exit('нет калибровки — извлечение не удалось, шаг 4 бессмысленен')
+
+# Время берётся из калибровки, а не из точек: ручная разметка должна
+# работать и на наблюдении, где извлечение не нашло ничего.
+from datetime import datetime
+t_min = datetime.fromisoformat(c['t_min'].replace('Z', '+00:00'))
+mjd = t_min.timestamp() / 86400.0 + 40587.0
+
+body = {'points': {
+    'mjd':         [*p['mjd'], mjd],
+    'f_offset_hz': [*p['f_offset_hz'], ${MANUAL_OFFSET_HZ}],
+    'snr':         [*p['snr'], 0.0],
+    'weight':      [*p['weight'], 1.0],
+    'enabled':     [*p['enabled'], True],
+    'source':      [*p['source'], 'manual'],
+}}
+json.dump(body, sys.stdout)
+" > /tmp/orbit-demo-track.json
+
+curl -fsS -X PUT "${TRACK}" \
+    -H 'Content-Type: application/json' \
+    -d @/tmp/orbit-demo-track.json \
+    | python3 -c '
+import json, sys
+
+t = json.load(sys.stdin)
+p, center = t["points"], t["calibration"]["center_freq_hz"]
+i = p["source"].index("manual")
+print("   ручная точка [{}]: смещение {:+.1f} Гц → f_abs {:.1f} Гц".format(
+    i, p["f_offset_hz"][i], p["f_abs_hz"][i]))
+print("   всего точек:", len(p["mjd"]))
+# f_abs = f_центра − f_смещение: клиент прислал только смещение (правило 9).
+assert abs(p["f_abs_hz"][i] + p["f_offset_hz"][i] - center) < 1e-6, \
+    "сервер посчитал f_abs не по формуле ядра received_freq_hz"
+print("   f_abs посчитан сервером по received_freq_hz ✓")
+'
+
+echo
+echo "5. POST ${TRACK%/track}/reextract  — повтор с другим snr_threshold"
+curl -fsS -X POST "${TRACK%/track}/reextract" \
+    -H 'Content-Type: application/json' \
+    -d '{"snr_threshold": 5.0}' -o /dev/null -w '   код %{http_code}\n'
+
+# Пауза до первого опроса: статус переводит воркер, и без неё цикл увидел бы
+# ещё прежнее `ok` и вышел, не дождавшись повтора.
+sleep 3
+for _ in $(seq 30); do
+    STATUS=$(curl -fsS "${BASE}/sessions/${UUID}" \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin)["observations"][0]["extraction_status"])')
+    [ "${STATUS}" = "pending" ] || [ "${STATUS}" = "running" ] || break
+    sleep 2
+done
+
+curl -fsS "${TRACK}" | python3 -c '
+import json, sys
+
+p = json.load(sys.stdin)["points"]
+manual = p["source"].count("manual")
+print("   точек после повтора:", len(p["mjd"]), "из них ручных:", manual)
+assert manual == 1, "ручная точка не пережила повторное извлечение"
+assert p["mjd"] == sorted(p["mjd"]), "порядок точек не восстановлен по времени"
+print("   ручная разметка сохранена ✓")
+'
+
+curl -fsS "${BASE}/sessions/${UUID}" | python3 -c '
+import json, sys
+
+o = json.load(sys.stdin)["observations"][0]
+print("   RMS {:.4f} кГц на {} точках".format(o["rms_khz"], o["n_points"]))
+print("   RMS вырос против 0.0250: точка поставлена наугад, и диагностика")
+print("   считается по тому набору, который есть, а не по прежнему ✓")
 '
