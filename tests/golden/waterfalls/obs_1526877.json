@@ -1,0 +1,153 @@
+{
+ "id": 1526877,
+ "start": "2026-08-16T01:26:38.507565Z",
+ "end": "2026-08-16T01:33:26.393906Z",
+ "ground_station": 40,
+ "transmitter": "34KpBL6uMxZ3rPnLxrbh2S",
+ "norad_cat_id": 64880,
+ "payload": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/payload_1526877_2026-08-16T01-26-38.ogg",
+ "waterfall": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/waterfall_1526877_2026-08-16T01-26-38.png",
+ "demoddata": [
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-27-01"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-59"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-01_0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-01"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-57"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-30"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-00"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-27-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-30_0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-30"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-28"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-26"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-00"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-55"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-30"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-31-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-31-00"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-31-24"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-54_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-31-25_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-27-55_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-53_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-24_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-24_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-25_g1"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-25_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-27-56_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-52_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-28-54_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-54_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-31-19_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-26-55_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-21_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-27-25_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-29-23_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/1/1526877/data_1526877_2026-08-16T01-30-50_g0"
+  }
+ ],
+ "station_name": "Лицей математики и информатики, Саратов",
+ "station_lat": 51.544,
+ "station_lng": 46.02,
+ "station_alt": 100,
+ "vetted_status": "good",
+ "vetted_user": null,
+ "vetted_datetime": null,
+ "archived": false,
+ "archive_url": null,
+ "client_version": "2.2.2",
+ "client_metadata": "{\"radio\": {\"name\": \"gr-satnogs\", \"version\": \"4defcfc4\", \"parameters\": {\"mode\": \"GFSK_GEOSCAN\", \"soapy-rx-device\": \"driver=airspy,biastee=true,freq_corr=-2\", \"samp-rate-rx\": \"3e6\", \"rx-freq\": 435973500, \"file-path\": \"/tmp/.soniks/output/1526877/payload_1526877_2026-08-16T01-26-38.ogg\", \"waterfall-file-path\": \"/tmp/.soniks/output/1526877/raw_waterfall_1526877_2026-08-16T01-26-38.dat\", \"decoded-data-file-path\": \"/tmp/.soniks/output/1526877/data_1526877\", \"doppler-correction-per-sec\": null, \"lo-offset\": null, \"lo-transverter\": null, \"ppm\": 0, \"rigctl-host\": \"rigctld\", \"rigctl-port\": 4532, \"gain-mode\": \"Settings Field\", \"gain\": null, \"antenna\": \"RX\", \"dev-args\": null, \"stream-args\": null, \"tune-args\": null, \"other-settings\": \"LNA=9,MIX=10,VGA=8\", \"dc-removal\": null, \"bb-freq\": null, \"bw\": null, \"enable-iq-dump\": 0, \"iq-file-path\": null, \"udp-dump-host\": \"127.0.0.1\", \"udp-dump-port\": 57356, \"baud\": 9600}}, \"latitude\": 51.544, \"longitude\": 46.02, \"elevation\": 100, \"frequency\": 435973500, \"signal\": {\"snr_db\": \"28.1 dB\", \"snr_quality\": \"1.00\", \"noise_db\": \"-92.4 dB\", \"noise_std_db\": \"0.6 dB\", \"peak_db\": \"-64.3 dB\", \"peak_freq_hz\": \"4556.2 Hz\", \"modulation\": \"2-FSK / wide-FSK (h\\u22651)\", \"n_spec_peaks\": 5, \"valley_depth_db\": \"0.0 dB\", \"deviation_hz\": \"7493.8 Hz\", \"deviation_uncertainty_hz\": \"239.9 Hz\", \"deviation_confidence\": \"0.80\", \"deviation_method\": \"V7 cross-row override of spectrum-peak (sidebands)\", \"f_low_hz\": \"-454.9 Hz\", \"f_high_hz\": \"14532.6 Hz\", \"bw_3db_hz\": \"9618.8 Hz\", \"bw_10db_hz\": \"9675.0 Hz\", \"bw_20db_hz\": \"12093.8 Hz\", \"bw_26db_hz\": \"16650.0 Hz\", \"sigma_rms_hz\": \"3488.8 Hz\", \"n_bursts\": 94, \"n_valid_rows\": 94, \"carrier_offset_hz\": \"-258.9 Hz\", \"ppm_error\": \"-0.594 ppm\", \"drift_ppb\": \"-593.8\", \"measured_freq_mhz\": \"435.973245 MHz\", \"method\": \"V7 discrete FSK: peaks -454.9/+14532.6 Hz valley=17.0dB sym=0.00 sep=9609.6 Hz  cross-row \\u0394f=7494Hz agrees (0.0%)\"}}",
+ "status": "good",
+ "waterfall_status": "unknown",
+ "waterfall_status_user": null,
+ "waterfall_status_datetime": null,
+ "rise_azimuth": 2.0,
+ "set_azimuth": 216.0,
+ "max_altitude": 45.0,
+ "tle": {
+  "tle0": "GEOSCAN 1 (RS92S1)",
+  "tle1": "1 64880U 25155E   26227.84359374  .00007727  00000-0  25351-3 0  9998",
+  "tle2": "2 64880  97.4609 196.8945 0006430 343.4826  16.6205 15.31872799 89906",
+  "updated": "2026-08-16T00:35:47.916368Z",
+  "tle_source": "Celestrak"
+ },
+ "center_frequency": null,
+ "observer": 8,
+ "observation_frequency": 435973500,
+ "transmitter_status": "active",
+ "transmitter_unconfirmed": false,
+ "transmitter_updated": "",
+ "image_count": 0,
+ "demoddata_count": 36
+}

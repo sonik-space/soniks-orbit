@@ -1,0 +1,192 @@
+{
+ "id": 1527888,
+ "start": "2026-08-16T10:32:48.296709Z",
+ "end": "2026-08-16T10:39:10.172045Z",
+ "ground_station": 121,
+ "transmitter": "34KpBL6uMxZ3rPnLxrbh2S",
+ "norad_cat_id": 64880,
+ "payload": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/payload_1527888_2026-08-16T10-32-48.ogg",
+ "waterfall": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/waterfall_1527888_2026-08-16T10-32-48.png",
+ "demoddata": [
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-33-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-33-01"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-33-13"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-33-42"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-34-11"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-34-40"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-34-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-35-38"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-35-09"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-35-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-01"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-34"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-03"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-01"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-07"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-32"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-36"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-05"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-01"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-31"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-39-01"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-39-01_0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-56_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-32-57_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-28_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-34-56_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-57_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-27_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-59_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-32_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-30_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-01_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-35-26_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-37-26_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-38-57_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-34-07_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-57_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-27_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-36-03_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-35-57_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-35-34_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-33-38_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-34-27_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-35-05_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-34-36_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-33-26_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/16/10/1527888/data_1527888_2026-08-16T10-33-09_g0"
+  }
+ ],
+ "station_name": "Баган",
+ "station_lat": 54.1,
+ "station_lng": 77.7,
+ "station_alt": 100,
+ "vetted_status": "good",
+ "vetted_user": null,
+ "vetted_datetime": null,
+ "archived": false,
+ "archive_url": null,
+ "client_version": "2.2.0",
+ "client_metadata": "{\"radio\": {\"name\": \"gr-satnogs\", \"version\": \"4defcfc4\", \"parameters\": {\"mode\": \"GFSK_GEOSCAN\", \"soapy-rx-device\": \"driver=airspy,biastee=true\", \"samp-rate-rx\": \"3e6\", \"rx-freq\": 435973500, \"file-path\": \"/tmp/.soniks/output/1527888/payload_1527888_2026-08-16T10-32-48.ogg\", \"waterfall-file-path\": \"/tmp/.soniks/output/1527888/raw_waterfall_1527888_2026-08-16T10-32-48.dat\", \"decoded-data-file-path\": \"/tmp/.soniks/output/1527888/data_1527888\", \"doppler-correction-per-sec\": null, \"lo-offset\": null, \"lo-transverter\": null, \"ppm\": 0, \"rigctl-host\": \"rigctld\", \"rigctl-port\": 4532, \"gain-mode\": \"Settings Field\", \"gain\": null, \"antenna\": \"RX\", \"dev-args\": null, \"stream-args\": null, \"tune-args\": null, \"other-settings\": \"LNA=8,MIX=9,VGA=7\", \"dc-removal\": null, \"bb-freq\": null, \"bw\": null, \"enable-iq-dump\": 0, \"iq-file-path\": null, \"udp-dump-host\": \"127.0.0.1\", \"udp-dump-port\": 57356, \"baud\": 9600}}, \"latitude\": 54.1, \"longitude\": 77.7, \"elevation\": 100, \"frequency\": 435973500, \"signal\": {\"snr_db\": \"27.3 dB\", \"snr_quality\": \"1.00\", \"noise_db\": \"-98.1 dB\", \"noise_std_db\": \"0.4 dB\", \"peak_db\": \"-70.8 dB\", \"peak_freq_hz\": \"-4106.2 Hz\", \"modulation\": \"2-FSK / wide-FSK (h\\u22651)\", \"n_spec_peaks\": 5, \"valley_depth_db\": \"0.0 dB\", \"deviation_hz\": \"4801.6 Hz\", \"deviation_uncertainty_hz\": \"28.1 Hz\", \"deviation_confidence\": \"1.00\", \"deviation_method\": \"V7 spectrum-peak pair (\\u0394f = sep/2)\", \"f_low_hz\": \"-4091.1 Hz\", \"f_high_hz\": \"5512.1 Hz\", \"bw_3db_hz\": \"9618.8 Hz\", \"bw_10db_hz\": \"9731.2 Hz\", \"bw_20db_hz\": \"12937.5 Hz\", \"bw_26db_hz\": \"17212.5 Hz\", \"sigma_rms_hz\": \"3453.4 Hz\", \"n_bursts\": 67, \"n_valid_rows\": 67, \"carrier_offset_hz\": \"681.9 Hz\", \"ppm_error\": \"1.564 ppm\", \"drift_ppb\": \"1564.2\", \"measured_freq_mhz\": \"435.974186 MHz\", \"method\": \"V7 discrete FSK: peaks -4091.1/+5512.1 Hz valley=17.6dB sym=0.01 sep=9603.1 Hz  cross-row \\u0394f=4050Hz agrees (15.6%)\"}}",
+ "status": "good",
+ "waterfall_status": "unknown",
+ "waterfall_status_user": null,
+ "waterfall_status_datetime": null,
+ "rise_azimuth": 217.0,
+ "set_azimuth": 329.0,
+ "max_altitude": 22.0,
+ "tle": {
+  "tle0": "GEOSCAN 1 (RS92S1)",
+  "tle1": "1 64880U 25155E   26227.90891533  .00007774  00000-0  25504-3 0  9995",
+  "tle2": "2 64880  97.4609 196.9603 0006422 343.2346  16.8682 15.31873960 89917",
+  "updated": "2026-08-16T08:35:50.227062Z",
+  "tle_source": "Celestrak"
+ },
+ "center_frequency": null,
+ "observer": 364,
+ "observation_frequency": 435973500,
+ "transmitter_status": "active",
+ "transmitter_unconfirmed": false,
+ "transmitter_updated": "",
+ "image_count": 0,
+ "demoddata_count": 49
+}

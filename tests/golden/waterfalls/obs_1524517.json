@@ -1,0 +1,60 @@
+{
+ "id": 1524517,
+ "start": "2026-08-13T15:38:45.115000Z",
+ "end": "2026-08-13T15:53:22.037000Z",
+ "ground_station": 125,
+ "transmitter": "Qc2PqaS7n9WYtne3U9EmKJ",
+ "norad_cat_id": 57166,
+ "payload": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/13/15/1524517/payload_1524517_2026-08-13T15-38-45.ogg",
+ "waterfall": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/13/15/1524517/waterfall_1524517_2026-08-13T15-38-45.png",
+ "demoddata": [
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/13/15/1524517/data_1524517_2026-08-13T15-50-56_g1"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/13/15/1524517/data_1524517_2026-08-13T15-50-56_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/13/15/1524517/data_1524517_2026-08-13T15-50-43_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/13/15/1524517/data_1524517_2026-08-13T15-45-36_g0"
+  },
+  {
+   "demodulated_data": "https://storage.yandexcloud.net/sonics-data-prod/data_obs/2026/8/13/15/1524517/data_1524517_2026-08-13T15-39-10_g0"
+  }
+ ],
+ "station_name": "Обозерский",
+ "station_lat": 63.4627,
+ "station_lng": 40.2949,
+ "station_alt": 5,
+ "vetted_status": "good",
+ "vetted_user": 338,
+ "vetted_datetime": "2026-08-13T15:56:41.117055Z",
+ "archived": false,
+ "archive_url": null,
+ "client_version": "2.2.2",
+ "client_metadata": "{\"radio\": {\"name\": \"gr-satnogs\", \"version\": \"4defcfc4\", \"parameters\": {\"mode\": \"FSK\", \"soapy-rx-device\": \"driver=airspy,biastee=false\", \"samp-rate-rx\": \"3e6\", \"rx-freq\": 137900000, \"file-path\": \"/tmp/.soniks/output/1524517/payload_1524517_2026-08-13T15-38-45.ogg\", \"waterfall-file-path\": \"/tmp/.soniks/output/1524517/raw_waterfall_1524517_2026-08-13T15-38-45.dat\", \"decoded-data-file-path\": \"/tmp/.soniks/output/1524517/data_1524517\", \"doppler-correction-per-sec\": null, \"lo-offset\": null, \"lo-transverter\": null, \"ppm\": 0, \"rigctl-host\": \"rigctld\", \"rigctl-port\": 4532, \"gain-mode\": \"Settings Field\", \"gain\": null, \"antenna\": \"RX\", \"dev-args\": null, \"stream-args\": null, \"tune-args\": null, \"other-settings\": \"LNA=16,MIX=14,VGA=16\", \"dc-removal\": null, \"bb-freq\": null, \"bw\": null, \"enable-iq-dump\": 1, \"iq-file-path\": \"/tmp/iq\", \"udp-dump-host\": \"127.0.0.1\", \"udp-dump-port\": 57356, \"baud\": 60000}}, \"latitude\": 64.561, \"longitude\": 40.542, \"elevation\": 30, \"frequency\": 137900000, \"signal\": {\"snr_db\": \"11.3 dB\", \"snr_quality\": \"0.32\", \"noise_db\": \"-65.0 dB\", \"noise_std_db\": \"6.5 dB\", \"peak_db\": \"-53.6 dB\", \"peak_freq_hz\": \"-2578.1 Hz\", \"modulation\": \"narrowband digital (CPFSK h<1 / GMSK / MSK / BPSK)\", \"n_spec_peaks\": 5, \"valley_depth_db\": \"3.9 dB\", \"deviation_hz\": \"25146.3 Hz\", \"deviation_uncertainty_hz\": \"3771.9 Hz\", \"deviation_confidence\": \"0.53\", \"deviation_method\": \"V7 \\u03c3_RMS \\u00b7 1.16 (target-isolated)\", \"f_low_hz\": \"-14399.6 Hz\", \"f_high_hz\": \"11117.3 Hz\", \"bw_3db_hz\": \"0.0 Hz\", \"bw_10db_hz\": \"94687.5 Hz\", \"bw_20db_hz\": \"94921.9 Hz\", \"bw_26db_hz\": \"94921.9 Hz\", \"sigma_rms_hz\": \"21656.9 Hz\", \"n_bursts\": 1498, \"n_valid_rows\": 1498, \"carrier_offset_hz\": \"-2037.3 Hz\", \"ppm_error\": \"-14.774 ppm\", \"drift_ppb\": \"-14774.1\", \"measured_freq_mhz\": \"137.897963 MHz\", \"method\": \"V7 unimodal CPFSK \\u03c3=21657 BW99=88828 BW90=69375 valley=3.9dB K=1.16  cross-row \\u0394f=5158Hz disagrees (79.5%)\"}}",
+ "status": "good",
+ "waterfall_status": "with-signal",
+ "waterfall_status_user": 338,
+ "waterfall_status_datetime": "2026-08-13T15:56:41.117055Z",
+ "rise_azimuth": 121.0,
+ "set_azimuth": 336.0,
+ "max_altitude": 37.0,
+ "tle": {
+  "tle0": "METEOR-M2 3",
+  "tle1": "1 57166U 23091A   26225.22161300 -.00000009  00000-0  14774-4 0  9999",
+  "tle2": "2 57166  98.6043 279.0204 0004169  21.7290 338.4065 14.24050700162632",
+  "updated": "2026-08-13T08:35:46.000960Z",
+  "tle_source": "Celestrak"
+ },
+ "center_frequency": null,
+ "observer": 338,
+ "observation_frequency": 137900000,
+ "transmitter_status": "active",
+ "transmitter_unconfirmed": false,
+ "transmitter_updated": "",
+ "image_count": 0,
+ "demoddata_count": 5
+}
