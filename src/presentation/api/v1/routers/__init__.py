@@ -1,5 +1,8 @@
 from fastapi import APIRouter
 
+from presentation.api.v1.routers.fit.by_id import fit_by_id_router
+from presentation.api.v1.routers.fit.create import create_fit_router
+from presentation.api.v1.routers.fit.list import list_fits_router
 from presentation.api.v1.routers.health_check import health_router
 from presentation.api.v1.routers.session.by_uuid import session_by_uuid_router
 from presentation.api.v1.routers.session.create import create_session_router
@@ -18,5 +21,8 @@ for router in (
     track_router,
     update_track_router,
     reextract_router,
+    create_fit_router,
+    list_fits_router,
+    fit_by_id_router,
 ):
     api_v1_router.include_router(router)

@@ -12,11 +12,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-
-class TleSchema(BaseModel):
-    tle0: str
-    tle1: str
-    tle2: str
+from application.dtos.common import ElementsSchema, TleSchema
 
 
 class CreateSessionRequest(BaseModel):
@@ -43,6 +39,22 @@ class SessionObservationResponse(BaseModel):
     # Запас порядка единицы означает, что конвенции оси неразличимы,
     # то есть трек ненадёжен, и это показывается пользователю (algorithms.md §3).
     convention_margin: float | None = None
+    # Частота наблюдения из ответа Django, рядом с `center_freq_hz` калибровки,
+    # которая приходит из PNG-чанка. Расхождение — предупреждение в UI: иначе
+    # несущая молча его поглотит. На проверенных наблюдениях расхождения нет
+    # (открытый вопрос 4 закрыт), но проверка стоит одного поля.
+    observation_frequency_hz: float | None = None
+
+
+class LatestFitResponse(BaseModel):
+    """Последний прогон фита сессии — любого статуса: у неуспешного тоже есть
+    элементы, и молчать о нём хуже, чем показать со статусом."""
+
+    fit_run_id: UUID
+    status: str
+    rms_khz: float
+    elements_out: ElementsSchema
+    tle: TleSchema
 
 
 class SessionResponse(BaseModel):
@@ -52,10 +64,12 @@ class SessionResponse(BaseModel):
     status: str
     seed_tle: TleSchema
     observations: list[SessionObservationResponse]
+    # `None`, пока фит ни разу не гонялся.
+    latest_fit: LatestFitResponse | None = None
 
 
 class SessionSummaryResponse(BaseModel):
-    """Строка списка. `rms_khz` появится здесь в фазе 4 вместе с фитом:
+    """Строка списка. `rms_khz` — от последнего прогона фита любого статуса:
     до него у сессии нет числа, которое описывало бы её целиком."""
 
     uuid: UUID
@@ -63,6 +77,7 @@ class SessionSummaryResponse(BaseModel):
     norad_id: int | None
     status: str
     n_observations: int
+    rms_khz: float | None = None
 
 
 class CalibrationResponse(BaseModel):
@@ -104,11 +119,27 @@ class ExtractionStatusResponse(BaseModel):
     error: str | None = None
 
 
+class ModelCurveResponse(BaseModel):
+    """Модельная кривая последнего фита на равномерной сетке времени.
+
+    Заменяет `ikhnosoniks`: кривая идёт через весь проход, в том числе там,
+    где точек нет. Считает её сервер — фронт доплер не снимает (правило 9).
+    """
+
+    mjd: list[float]
+    f_offset_hz: list[float]
+
+
 class TrackResponse(BaseModel):
     calibration: CalibrationResponse | None
     waterfall_url: str | None
     points: PointsResponse
     extraction: ExtractionStatusResponse
+    # Модельная кривая последнего прогона фита — замена `ikhnosoniks`.
+    # Приходит сюда, а не в ответ фита: рисуется она поверх этого водопада,
+    # и панель уже читает этот запрос. `None`, пока фита не было или пока
+    # это наблюдение в нём не участвовало.
+    model: ModelCurveResponse | None = None
 
 
 class TrackPointsRequest(BaseModel):

@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -47,13 +48,45 @@ class ObservationTrack:
 @dataclass(frozen=True)
 class SessionSummary:
     """Строка списка сессий. Точки не читаются: они лежат блоком в JSONB,
-    и списку от них нужно только количество наблюдений."""
+    и списку от них нужно только количество наблюдений.
+
+    `rms_khz` — от последнего прогона фита, любого статуса: до фита у сессии
+    нет числа, которое описывало бы её целиком.
+    """
 
     uuid: UUID
     name: str
     norad_id: int | None
     status: str
     n_observations: int
+    rms_khz: float | None = None
+
+
+@dataclass(frozen=True)
+class FitRun:
+    """Прогон фита целиком: без него опубликованное TLE невоспроизводимо.
+
+    `status == "failed"` — прогон, где `least_squares` не сошёлся или исчерпал
+    `max_nfev`. Элементы и невязки в нём всё равно есть: без них не видно,
+    что пошло не так (algorithms.md §4.4).
+    """
+
+    uuid: UUID
+    session_uuid: UUID
+    created_at: datetime
+    author_sub: str
+    config: dict[str, Any]
+    elements_in: dict[str, Any]
+    elements_out: dict[str, Any]
+    tle: TleLines
+    epoch_mjd: float
+    rms_khz: float
+    rms_pre_khz: float
+    n_points: int
+    per_observation: list[dict[str, Any]]
+    residuals: dict[str, Any]
+    prior_dominated: list[str]
+    status: str
 
 
 @dataclass(frozen=True)

@@ -5,31 +5,40 @@ from __future__ import annotations
 import datetime as dt
 from uuid import UUID
 
+from application.dtos.common import TleSchema
 from application.dtos.session import (
     CalibrationResponse,
     ExtractionStatusResponse,
     PointsResponse,
     SessionObservationResponse,
     SessionResponse,
-    TleSchema,
     TrackResponse,
 )
-from application.interfaces.repositories import SessionRepository
+from application.interfaces.repositories import FitRunRepository, SessionRepository
+from application.services.fitting import (
+    curve_inputs,
+    latest_fit_response,
+    model_curve,
+)
+from core.configs.fit import FitSettings
 from domain.exceptions import NotFoundError
 from domain.models import ObservationTrack
+from domain.od.elements import Elements
 
 MJD_UNIX_EPOCH = 40587.0
 
 
 class GetSessionQuery:
-    def __init__(self, repo: SessionRepository) -> None:
+    def __init__(self, repo: SessionRepository, fit_repo: FitRunRepository) -> None:
         self._repo = repo
+        self._fit_repo = fit_repo
 
     async def __call__(self, session_uuid: UUID) -> SessionResponse:
         session = await self._repo.get(session_uuid)
         if session is None:
             raise NotFoundError(f"сессия {session_uuid} не найдена")
 
+        latest = await self._fit_repo.latest(session_uuid)
         return SessionResponse(
             uuid=session.uuid,
             name=session.name,
@@ -39,12 +48,20 @@ class GetSessionQuery:
                 tle0=session.seed.tle0, tle1=session.seed.tle1, tle2=session.seed.tle2
             ),
             observations=[_observation(t) for t in session.observations],
+            latest_fit=None if latest is None else latest_fit_response(latest),
         )
 
 
 class GetTrackQuery:
-    def __init__(self, repo: SessionRepository) -> None:
+    def __init__(
+        self,
+        repo: SessionRepository,
+        fit_repo: FitRunRepository,
+        settings: FitSettings,
+    ) -> None:
         self._repo = repo
+        self._fit_repo = fit_repo
+        self._settings = settings
 
     async def __call__(self, session_uuid: UUID, observation_id: int) -> TrackResponse:
         track = await self._repo.get_observation(session_uuid, observation_id)
@@ -60,6 +77,40 @@ class GetTrackQuery:
             extraction=ExtractionStatusResponse(
                 status=track.extraction_status, error=track.extraction_error
             ),
+            model=await self._model(session_uuid, track),
+        )
+
+    async def _model(self, session_uuid: UUID, track: ObservationTrack):
+        """Модельная кривая последнего прогона поверх этого водопада.
+
+        Считается на чтение, а не хранится: элементы и несущая уже лежат
+        в прогоне, а сетка — это одна векторная прогонка SGP4, микросекунды.
+        Так кривая не может разойтись с `elements_out`.
+        """
+        calibration = curve_inputs(track)
+        if calibration is None:
+            return None
+
+        run = await self._fit_repo.latest(session_uuid)
+        if run is None:
+            return None
+
+        carrier_hz = next(
+            (
+                block["carrier_hz"]
+                for block in run.per_observation
+                if block["observation_id"] == track.observation_id
+            ),
+            None,
+        )
+        if carrier_hz is None:
+            return None
+
+        return model_curve(
+            Elements.from_tle(run.tle.tle1, run.tle.tle2),
+            carrier_hz / 1000.0,
+            calibration,
+            self._settings.MODEL_CURVE_POINTS,
         )
 
 
@@ -79,6 +130,7 @@ def _observation(track: ObservationTrack) -> SessionObservationResponse:
         rms_khz=diag.get("rms_khz"),
         carrier_hz=diag.get("carrier_hz"),
         convention_margin=diag.get("margin"),
+        observation_frequency_hz=meta.get("observation_frequency"),
     )
 
 

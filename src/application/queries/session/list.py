@@ -20,6 +20,7 @@ class ListSessionsQuery:
                 norad_id=s.norad_id,
                 status=s.status,
                 n_observations=s.n_observations,
+                rms_khz=s.rms_khz,
             )
             for s in await self._repo.list_for_owner(owner_sub, limit)
         ]

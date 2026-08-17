@@ -12,12 +12,13 @@ from starlette.requests import Request
 
 from application.interfaces.image_fetcher import WaterfallImages
 from application.interfaces.network_api import NetworkApi
-from application.interfaces.repositories import SessionRepository
+from application.interfaces.repositories import FitRunRepository, SessionRepository
 from application.interfaces.tasks import ExtractionQueue
 from application.interfaces.transaction import Transaction
 from core.configs import settings
 from core.configs.auth import AuthSettings
 from core.configs.database import PostgresSettings, SQLEngineSettings
+from core.configs.fit import FitSettings
 from core.configs.logging import LoggingSettings
 from core.configs.network_api import NetworkApiSettings
 from core.configs.waterfall import WaterfallSettings
@@ -25,6 +26,7 @@ from infrastructure.auth.keycloak import CurrentUser, MockCurrentUser, PyJWKClie
 from infrastructure.images.loader import CachedWaterfallImages
 from infrastructure.network_api.django import DjangoNetworkApi
 from infrastructure.postgres.database import get_engine, get_session, get_sessionmaker
+from infrastructure.postgres.repositories.fit import SQLAlchemyFitRunRepository
 from infrastructure.postgres.repositories.session import SQLAlchemySessionRepository
 from infrastructure.postgres.transaction import SQLAlchemyTransaction
 from infrastructure.tasks.queue import TaskiqExtractionQueue
@@ -84,6 +86,7 @@ def gateway_provider() -> Provider:
     provider = Provider(scope=Scope.REQUEST)
     provider.provide(SQLAlchemyTransaction, provides=Transaction)
     provider.provide(SQLAlchemySessionRepository, provides=SessionRepository)
+    provider.provide(SQLAlchemyFitRunRepository, provides=FitRunRepository)
     provider.provide(TaskiqExtractionQueue, provides=ExtractionQueue)
     return provider
 
@@ -119,4 +122,5 @@ def settings_provider() -> Provider:
     provider.from_context(LoggingSettings)
     provider.from_context(NetworkApiSettings)
     provider.from_context(WaterfallSettings)
+    provider.from_context(FitSettings)
     return provider

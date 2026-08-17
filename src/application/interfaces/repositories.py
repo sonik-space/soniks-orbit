@@ -1,7 +1,6 @@
-"""Хранение сессий уточнения.
+"""Хранение сессий уточнения и прогонов фита.
 
-Фазе 2 нужны только сессии и их наблюдения; репозитории прогонов фита
-и заданий идентификации появятся в фазах 4 и 6 вместе с их сценариями.
+Репозиторий заданий идентификации появится в фазе 6 вместе со сценарием.
 """
 
 from __future__ import annotations
@@ -9,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 from uuid import UUID
 
-from domain.models import ObservationTrack, OdSession, SessionSummary
+from domain.models import FitRun, ObservationTrack, OdSession, SessionSummary, TleLines
 
 
 class SessionRepository(Protocol):
@@ -58,4 +57,43 @@ class SessionRepository(Protocol):
         """Правка трека человеком: меняются точки и диагностика, всё остальное
         остаётся. Отдельно от `save_extraction`, которая пишет результат
         извлечения целиком и умолчаниями `None` стирает калибровку."""
+        ...
+
+    async def set_status(self, session_uuid: UUID, status: str) -> None:
+        """`draft` → `fitted` после удачного прогона."""
+        ...
+
+
+class FitRunRepository(Protocol):
+    """Прогоны фита. Отдельный протокол, а не рост `SessionRepository`:
+    сценарий свой, и таблица своя."""
+
+    async def create(
+        self,
+        *,
+        session_uuid: UUID,
+        author_sub: str,
+        config: dict[str, Any],
+        elements_in: dict[str, Any],
+        elements_out: dict[str, Any],
+        tle: TleLines,
+        epoch_mjd: float,
+        rms_khz: float,
+        rms_pre_khz: float,
+        n_points: int,
+        per_observation: list[dict[str, Any]],
+        residuals: dict[str, Any],
+        prior_dominated: list[str],
+        status: str,
+    ) -> FitRun: ...
+
+    async def get(self, fit_run_id: UUID) -> FitRun | None: ...
+
+    async def list_for_session(self, session_uuid: UUID) -> list[FitRun]:
+        """История прогонов, новые сверху."""
+        ...
+
+    async def latest(self, session_uuid: UUID) -> FitRun | None:
+        """Последний прогон **любого** статуса: у неуспешного тоже есть
+        элементы и невязки, и молчать о нём хуже, чем показать со статусом."""
         ...

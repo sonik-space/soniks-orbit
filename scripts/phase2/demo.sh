@@ -136,3 +136,78 @@ print("   RMS {:.4f} кГц на {} точках".format(o["rms_khz"], o["n_poin
 print("   RMS вырос против 0.0250: точка поставлена наугад, и диагностика")
 print("   считается по тому набору, который есть, а не по прежнему ✓")
 '
+
+# ---------------------------------------------------------------------------
+# Шаг 6 — фаза 4. Фит синхронный: ни job id, ни опроса состояния.
+#
+# Сессия своя, из двух проходов объекта 64880: фит по одному наблюдению
+# запрещён (algorithms.md §4.4), и это здесь тоже проверяется.
+FIT_OBS=${FIT_OBS:-1527888,1526972}
+
+echo
+echo "6. POST ${BASE}/sessions/{uuid}/fits  (наблюдения ${FIT_OBS})"
+
+echo "   6a. отказ на односессионном наборе"
+curl -sS -X POST "${BASE}/sessions/${UUID}/fits" \
+    -H 'Content-Type: application/json' -d '{}' \
+    -o /tmp/orbit-demo-refusal.json -w '   код %{http_code} — ' \
+    | cat
+python3 -c '
+import json
+print(json.load(open("/tmp/orbit-demo-refusal.json"))["detail"])
+'
+
+FIT_UUID=$(curl -fsS -X POST "${BASE}/sessions" \
+    -H 'Content-Type: application/json' \
+    -d "{\"name\": \"демонстрация фазы 4\", \"observation_ids\": [${FIT_OBS}]}" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["uuid"])')
+echo "   6b. сессия ${FIT_UUID}, ждём извлечение"
+for _ in $(seq 60); do
+    BUSY=$(curl -fsS "${BASE}/sessions/${FIT_UUID}" | python3 -c '
+import json, sys
+obs = json.load(sys.stdin)["observations"]
+print(any(o["extraction_status"] in ("pending", "running") for o in obs))
+')
+    [ "${BUSY}" = "True" ] || break
+    sleep 2
+done
+
+echo "   6c. фит"
+curl -fsS -X POST "${BASE}/sessions/${FIT_UUID}/fits" \
+    -H 'Content-Type: application/json' -d '{}' \
+    | python3 -c '
+import json, sys
+
+f = json.load(sys.stdin)
+print("   статус {}, RMS {:.4f} → {:.4f} кГц на {} точках".format(
+    f["status"], f["rms_pre_khz"], f["rms_khz"], f["n_points"]))
+for o in f["per_observation"]:
+    print("     наблюдение {}: {:>4} точек, RMS {:.4f} кГц, несущая {:.1f} Гц".format(
+        o["observation_id"], o["n"], o["rms_khz"], o["carrier_hz"]))
+print("   удержаны приором:", ", ".join(f["prior_dominated"]) or "ничего")
+print("  ", f["tle"]["tle1"])
+print("  ", f["tle"]["tle2"])
+
+# Невязки идут индекс-в-индекс с точками наблюдения: пара
+# (observation_id, index) — ключ выделения во всех трёх панелях UI.
+for obs_id, block in f["residuals"].items():
+    assert len(block["mjd"]) == len(block["residual_khz"]), obs_id
+print("   невязки индекс-в-индекс с точками ✓")
+'
+
+echo
+echo "   6d. модельная кривая приходит вместе с треком (замена ikhnosoniks)"
+curl -fsS "${BASE}/sessions/${FIT_UUID}/observations/${OBS}/track" | python3 -c '
+import json, sys
+
+m = json.load(sys.stdin)["model"]
+assert m, "модельной кривой нет: её считает сервер, фронт SGP4 не гоняет"
+print("   точек кривой: {}, смещение {:+.1f} .. {:+.1f} Гц".format(
+    len(m["mjd"]), min(m["f_offset_hz"]), max(m["f_offset_hz"])))
+'
+
+curl -fsS "${BASE}/sessions?limit=5" | python3 -c '
+import json, sys
+for s in json.load(sys.stdin):
+    print("   {}  {}  rms {}".format(s["uuid"][:8], s["status"], s["rms_khz"]))
+'

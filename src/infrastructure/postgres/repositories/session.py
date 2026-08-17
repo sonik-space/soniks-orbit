@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from application.interfaces.repositories import SessionRepository
 from domain.models import ObservationTrack, OdSession, SessionSummary, TleLines
 from infrastructure.postgres.models.orbit import (
+    OdFitRunORM,
     OdSessionObservationORM,
     OdSessionORM,
 )
@@ -68,6 +69,15 @@ class SQLAlchemySessionRepository(SessionRepository):
             .where(OdSessionObservationORM.session_uuid == OdSessionORM.uuid)
             .scalar_subquery()
         )
+        # RMS последнего прогона любого статуса: до фита у сессии нет числа,
+        # которое описывало бы её целиком (api.md).
+        latest_rms = (
+            select(OdFitRunORM.rms_khz)
+            .where(OdFitRunORM.session_uuid == OdSessionORM.uuid)
+            .order_by(OdFitRunORM.created_at.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
         rows = await self._session.execute(
             select(
                 OdSessionORM.uuid,
@@ -75,6 +85,7 @@ class SQLAlchemySessionRepository(SessionRepository):
                 OdSessionORM.norad_id,
                 OdSessionORM.status,
                 n_observations,
+                latest_rms,
             )
             .where(OdSessionORM.owner_sub == owner_sub)
             .order_by(OdSessionORM.created_at.desc())
@@ -125,6 +136,11 @@ class SQLAlchemySessionRepository(SessionRepository):
         # `MutableDict` изменение на месте не заметит и молча не сохранит.
         row.points = points
         row.diagnostics = diagnostics
+
+    async def set_status(self, session_uuid: UUID, status: str) -> None:
+        row = await self._session.get(OdSessionORM, session_uuid)
+        if row is not None:
+            row.status = status
 
 
 def _to_track(orm: OdSessionObservationORM) -> ObservationTrack:

@@ -5,6 +5,7 @@ from core.configs.auth import AuthSettings
 from core.configs.broker import AioPikaBrokerSettings, RabbitSettings
 from core.configs.cors import CORSSettings
 from core.configs.database import AlembicSettings, PostgresSettings, SQLEngineSettings
+from core.configs.fit import FitSettings
 from core.configs.logging import LoggingSettings
 from core.configs.network_api import NetworkApiSettings
 from core.configs.waterfall import WaterfallSettings
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
     cors: CORSSettings = CORSSettings()
     network_api: NetworkApiSettings = NetworkApiSettings()
     waterfall: WaterfallSettings = WaterfallSettings()
+    fit: FitSettings = FitSettings()
 
 
 settings = Settings()
@@ -38,6 +40,7 @@ __all__ = [
     "AppSettings",
     "AuthSettings",
     "CORSSettings",
+    "FitSettings",
     "LoggingSettings",
     "NetworkApiSettings",
     "PostgresSettings",

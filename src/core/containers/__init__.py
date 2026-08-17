@@ -4,6 +4,7 @@ from dishka import Provider
 from core.configs import Settings
 from core.configs.auth import AuthSettings
 from core.configs.database import PostgresSettings, SQLEngineSettings
+from core.configs.fit import FitSettings
 from core.configs.logging import LoggingSettings
 from core.configs.network_api import NetworkApiSettings
 from core.configs.waterfall import WaterfallSettings
@@ -43,4 +44,5 @@ def dishka_context(
         LoggingSettings: settings.logging,
         NetworkApiSettings: settings.network_api,
         WaterfallSettings: settings.waterfall,
+        FitSettings: settings.fit,
     }
