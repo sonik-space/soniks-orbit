@@ -104,6 +104,12 @@ class FitRunSummaryResponse(BaseModel):
 
     Без `residuals` и `per_observation`: десять прогонов по 2500 точек — это
     мегабайты на каждый заход в раздел. Полное тело — из `GET /fits/{id}`.
+
+    `free` и `priors_off` — исключение из этого правила, и оно вынужденное.
+    UI обязан помечать прогон с частичной маской иначе, чем полный
+    (decisions/013), в том числе в строке истории; без этих двух полей ему
+    пришлось бы тянуть полное тело на каждую строку. Прогоны до фазы 7 маски
+    в `config` не имеют — `None` здесь и означает «фитировались все семь».
     """
 
     fit_run_id: UUID
@@ -114,6 +120,8 @@ class FitRunSummaryResponse(BaseModel):
     n_points: int
     elements_out: ElementsSchema
     prior_dominated: list[str]
+    free: str | None = None
+    priors_off: bool = False
 
 
 class FitRunResponse(BaseModel):

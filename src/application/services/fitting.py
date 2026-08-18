@@ -405,6 +405,8 @@ def fit_run_summary(run: FitRun) -> FitRunSummaryResponse:
         n_points=run.n_points,
         elements_out=elements_schema(run.elements_out),
         prior_dominated=run.prior_dominated,
+        free=run.config.get("free"),
+        priors_off=run.config.get("priors_off", False),
     )
 
 
