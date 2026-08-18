@@ -265,8 +265,12 @@ def fit(
         per_seg[seg.key] = rms_khz(resid[at : at + seg.mjd.size])
         at += seg.mjd.size
 
+    # Приоров нет — «удержан приором» не определено ни для одного параметра.
+    # Без проверки на конечность σ = ∞ даёт da = 0, и в список попадают **все**
+    # свободные элементы: экспертный режим «без приоров» сообщал бы «данные
+    # ничего не сдвинули» ровно на тех прогонах, где данные сдвинули всё.
     dominated = []
-    if not compat:
+    if not compat and np.all(np.isfinite(sigmas)):
         da = np.abs(elements.to_vector() - a_seed) / sigmas
         dominated = [PARAM_NAMES[i] for i in free_idx if da[i] < 1.0]
 

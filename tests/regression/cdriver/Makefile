@@ -33,6 +33,11 @@ golden: driver
 		98423 1111111 $(GOLDEN)/lobach_all_free.json
 	ST_DATADIR=$(STRF) ./driver $(DATA)/tab_lobach_1.dat $(DATA)/lobach.tle \
 		98423 0101010 $(GOLDEN)/lobach_raan_argp_n.json
+	# Первый шаг гайда: сдвиг всех точек на частоту спутника **только**
+	# аргументом перигея (клавиша 4). Одна свободная величина — самый жёсткий
+	# случай для маски: любая протечка соседнего параметра тут же видна.
+	ST_DATADIR=$(STRF) ./driver $(DATA)/tab_lobach_1.dat $(DATA)/lobach.tle \
+		98423 0001000 $(GOLDEN)/lobach_argp_only.json
 	ST_DATADIR=$(STRF) ./driver $(DATA)/tusur338obs.dat $(DATA)/TLE-2024199.dat \
 		61782 1111111 $(GOLDEN)/tusur338_all_free.json
 

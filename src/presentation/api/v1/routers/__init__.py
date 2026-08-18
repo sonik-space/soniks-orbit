@@ -24,8 +24,10 @@ from presentation.api.v1.routers.publication.list import list_publications_route
 from presentation.api.v1.routers.session.by_uuid import session_by_uuid_router
 from presentation.api.v1.routers.session.create import create_session_router
 from presentation.api.v1.routers.session.list import list_sessions_router
+from presentation.api.v1.routers.session.manage import manage_session_router
 from presentation.api.v1.routers.session.reextract import reextract_router
 from presentation.api.v1.routers.session.track import track_router
+from presentation.api.v1.routers.session.update_seed import update_seed_router
 from presentation.api.v1.routers.session.update_track import update_track_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
@@ -35,6 +37,8 @@ for router in (
     create_session_router,
     list_sessions_router,
     session_by_uuid_router,
+    manage_session_router,
+    update_seed_router,
     track_router,
     update_track_router,
     reextract_router,

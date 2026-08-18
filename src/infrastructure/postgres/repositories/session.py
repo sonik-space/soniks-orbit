@@ -142,6 +142,68 @@ class SQLAlchemySessionRepository(SessionRepository):
         if row is not None:
             row.status = status
 
+    async def delete(self, session_uuid: UUID) -> bool:
+        """Наблюдения и прогоны уходят каскадом (`ondelete="CASCADE"` в схеме),
+        задания идентификации — обнулением ссылки (`SET NULL`): задание пережило
+        сессию, которую из него завели, и терять его нельзя."""
+        row = await self._session.get(OdSessionORM, session_uuid)
+        if row is None:
+            return False
+        await self._session.delete(row)
+        return True
+
+    async def add_observations(
+        self, session_uuid: UUID, observations: list[tuple[int, dict[str, Any]]]
+    ) -> list[ObservationTrack]:
+        existing = set(
+            (
+                await self._session.execute(
+                    select(OdSessionObservationORM.observation_id).where(
+                        OdSessionObservationORM.session_uuid == session_uuid
+                    )
+                )
+            ).scalars()
+        )
+        rows = [
+            OdSessionObservationORM(
+                session_uuid=session_uuid, observation_id=oid, meta=meta
+            )
+            for oid, meta in observations
+            if oid not in existing
+        ]
+        if not rows:
+            return []
+        self._session.add_all(rows)
+        await self._session.flush()
+        return [_to_track(row) for row in rows]
+
+    async def remove_observation(
+        self, session_uuid: UUID, observation_id: int
+    ) -> bool:
+        row = (
+            await self._session.execute(
+                select(OdSessionObservationORM).where(
+                    OdSessionObservationORM.session_uuid == session_uuid,
+                    OdSessionObservationORM.observation_id == observation_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return False
+        await self._session.delete(row)
+        return True
+
+    async def set_seed(
+        self, session_uuid: UUID, *, seed: TleLines, seed_source: str
+    ) -> None:
+        row = await self._session.get(OdSessionORM, session_uuid)
+        if row is None:
+            return
+        row.seed_tle0 = seed.tle0
+        row.seed_tle1 = seed.tle1
+        row.seed_tle2 = seed.tle2
+        row.seed_source = seed_source
+
 
 def _to_track(orm: OdSessionObservationORM) -> ObservationTrack:
     return ObservationTrack(

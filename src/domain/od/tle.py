@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from sgp4.api import Satrec
 from sgp4.exporter import export_tle
 
 from .elements import Elements
@@ -24,6 +25,48 @@ def checksum(line: str) -> int:
     return (
         sum(int(c) for c in line[:68] if c.isdigit()) + line[:68].count("-")
     ) % 10
+
+
+def validate_lines(line1: str, line2: str) -> None:
+    """Проверка строк перед разбором. Не проходит — `ValueError`.
+
+    Нужна там, где строки приходят от человека: затравка сессии. По остальным
+    путям TLE приезжает из Django, который уже прогнал `validate_tle`.
+
+    **`Satrec.twoline2rv` мусор не отвергает.** Это разборщик по фиксированным
+    колонкам: на короткой или битой строке он не бросает исключение, а молча
+    возвращает нули и ставит `sat.error`. Замер: `twoline2rv("1 мусор",
+    "2 мусор")` даёт `satnum=0, inclo=0, ecco=0, no_kozai=0, error=2` — то есть
+    затравку, с которой фит стартует в никуда и жалуется на что угодно, кроме
+    настоящей причины.
+
+    Проверяется то же, что в `network/base/tasks.py::validate_tle` монолита,
+    минус диапазоны элементов: длина, номер строки, контрольная сумма
+    и согласованность номера объекта. Плюс код ошибки самого SGP4 — его
+    в монолите нет, а он ловит остальное.
+    """
+    for number, line in ((1, line1), (2, line2)):
+        if len(line) != TLE_LINE_LENGTH:
+            raise ValueError(
+                f"строка {number} длиной {len(line)}, а нужно {TLE_LINE_LENGTH}"
+            )
+        if not line.startswith(f"{number} "):
+            raise ValueError(f"строка {number} не начинается с «{number} »")
+        if line[68] != str(checksum(line)):
+            raise ValueError(
+                f"контрольная сумма строки {number}: в строке {line[68]!r}, "
+                f"посчитана {checksum(line)}"
+            )
+
+    if line1[2:7] != line2[2:7]:
+        raise ValueError(
+            f"номер объекта разный: {line1[2:7]!r} в первой строке, "
+            f"{line2[2:7]!r} во второй"
+        )
+
+    sat = Satrec.twoline2rv(line1, line2)
+    if sat.error:
+        raise ValueError(f"SGP4 не принимает элементы: код {sat.error}")
 
 
 def to_lines(

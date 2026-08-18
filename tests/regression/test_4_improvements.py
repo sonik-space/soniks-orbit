@@ -133,3 +133,30 @@ def test_priors_switch_off_at_large_sigma(
     assert free.rms_khz <= tight.rms_khz + TOL_KHZ, (
         f"без приоров RMS {free.rms_khz:.6f}, с приорами {tight.rms_khz:.6f} кГц"
     )
+
+
+def test_infinite_sigma_reports_nothing_as_prior_dominated(
+    seed: Elements, segments: list[Segment]
+) -> None:
+    """Экспертный режим `priors_off` даёт **ровно** σ = ∞, а не 1e12.
+
+    На бесконечности `da = |Δa|/σ` обращается в ноль по всем элементам,
+    и проверка `da < 1` без защиты объявляла бы удержанными приором все семь —
+    то есть сообщала бы «данные ничего не сдвинули» ровно на том прогоне,
+    где приоров нет вовсе и всё сдвинули именно данные.
+    """
+    off = fit(
+        seed,
+        segments,
+        compat=False,
+        prior_sigmas=np.full(7, np.inf),
+        sigma_argp_plus_m=float("inf"),
+    )
+    assert off.prior_dominated == [], (
+        f"приоров нет, а удержанными приором названы {off.prior_dominated}"
+    )
+    assert np.isfinite(off.rms_khz), "фит без приоров развалился"
+
+    # И на конечных σ признак продолжает работать: 26 точек одного прохода
+    # не определяют семь элементов, и что-то приор обязан удержать.
+    assert fit(seed, segments, compat=False).prior_dominated

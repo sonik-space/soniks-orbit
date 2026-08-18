@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from application.dtos.common import ElementsSchema, TleSchema
 
@@ -41,9 +41,12 @@ class PriorSigmasSchema(BaseModel):
 class RunFitRequest(BaseModel):
     """Запуск фита. Все поля необязательны.
 
-    Галочек заморозки параметров здесь нет и не будет: все семь элементов
-    всегда свободны, а слабо определённые удерживает приор (decisions/004).
-    Флага режима совместимости здесь тоже нет — он живёт в ядре и нужен
+    **Умолчание не изменилось** (decisions/004): все семь элементов свободны,
+    слабо определённые удерживает приор. `free` и `priors_off` — экспертный
+    режим, аварийный выход для оператора, который воспроизводит пошаговый фит
+    из `rffit` (decisions/013), а не основной путь.
+
+    Флага режима совместимости здесь нет — он живёт в ядре и нужен
     регрессионному тесту, а не оператору (decisions/003).
     """
 
@@ -51,6 +54,25 @@ class RunFitRequest(BaseModel):
     f_scale: float | None = Field(default=None, gt=0.0)
     # По умолчанию — все наблюдения сессии, у которых есть точки.
     observation_ids: list[int] | None = None
+    # Маска свободных параметров, порядок `PARAM_NAMES`: наклонение, RAAN,
+    # эксцентриситет, аргумент перигея, средняя аномалия, среднее движение, B*.
+    # Зеркало массива `ia` в `fit_curve` (rffit.c:1949) и клавиш 1–7. Зажатый
+    # параметр исключается из вектора оптимизации, а не обрезается внутри
+    # невязки, как в эталоне: обрезка делает функцию плоской и останавливает
+    # `trf` по xtol, не дойдя до минимума.
+    free: str | None = Field(default=None, pattern=r"^[01]{7}$")
+    # Приоры целиком: σ = ∞ по всем семи элементам и по `argp + M`. Взаимно
+    # исключается с `prior_sigmas` — задавать σ и тут же объявлять их
+    # бесконечными значит не понимать, что из двух победит.
+    priors_off: bool = False
+
+    @model_validator(mode="after")
+    def _priors_off_excludes_sigmas(self) -> RunFitRequest:
+        if self.priors_off and self.prior_sigmas is not None:
+            raise ValueError("priors_off и prior_sigmas взаимно исключаются")
+        if self.free is not None and "1" not in self.free:
+            raise ValueError("маска free зажимает все параметры: фитировать нечего")
+        return self
 
 
 class PerObservationFitResponse(BaseModel):

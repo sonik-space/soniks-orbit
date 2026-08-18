@@ -9,7 +9,13 @@ from application.commands.identification.confirm import (
 from application.commands.identification.create import CreateIdentificationInteractor
 from application.commands.identification.reject import RejectIdentificationInteractor
 from application.commands.session.create import CreateSessionInteractor
+from application.commands.session.manage import (
+    AddObservationsInteractor,
+    DeleteSessionInteractor,
+    RemoveObservationInteractor,
+)
 from application.commands.session.reextract import ReextractInteractor
+from application.commands.session.update_seed import UpdateSeedInteractor
 from application.commands.session.update_track import UpdateTrackInteractor
 from application.queries.fit.by_id import GetFitRunQuery
 from application.queries.fit.list import ListFitRunsQuery
@@ -25,6 +31,10 @@ def application_provider() -> Provider:
     provider = Provider(scope=Scope.REQUEST)
     provider.provide_all(
         CreateSessionInteractor,
+        AddObservationsInteractor,
+        RemoveObservationInteractor,
+        DeleteSessionInteractor,
+        UpdateSeedInteractor,
         UpdateTrackInteractor,
         ReextractInteractor,
         GetSessionQuery,

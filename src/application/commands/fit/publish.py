@@ -23,11 +23,11 @@ from application.dtos.publish import PublishRequest, PublishResponse
 from application.interfaces.network_api import NetworkApi
 from application.interfaces.repositories import FitRunRepository, SessionRepository
 from application.interfaces.transaction import Transaction
-from application.services.fitting import iso_from_mjd
+from application.services.fitting import elements_from_dict, iso_from_mjd
 from application.services.publishing import reepoch_run
 from core.configs.app import AppSettings
 from domain.exceptions import ConflictError, ForbiddenError, NotFoundError
-from domain.models import FitRun, OdSession
+from domain.models import FitRun
 from domain.od.elements import Elements
 from domain.od.reepoch import separation_km
 
@@ -35,6 +35,11 @@ MAX_RMS_KHZ = 1.0
 MIN_POINTS = 100
 MIN_OBSERVATIONS = 2
 MAX_SEPARATION_KM = 50.0
+# Шаг 7 гайда: «проверяем, что эксцентриситет не ноль». `classel` зажимает
+# отрицательный эксцентриситет ровно в ноль (`reepoch.py`, как и `rv2el`
+# в эталоне), и круговая орбита на месте эллиптической — это не уточнение,
+# а потерянный элемент.
+MIN_ECC = 1e-6
 
 
 class PublishInteractor:
@@ -64,7 +69,7 @@ class PublishInteractor:
             raise NotFoundError(f"сессия {run.session_uuid} не найдена")
 
         # Порог — **до** обращения к Django, а не после (decisions/007).
-        check_quality(run, session)
+        check_quality(run)
 
         epoch_mjd, lines = reepoch_run(run, session, request.reepoch_to)
 
@@ -102,7 +107,7 @@ class PublishInteractor:
         )
 
 
-def check_quality(run: FitRun, session: OdSession) -> None:
+def check_quality(run: FitRun) -> None:
     """Порог качества. Не пройден — `409` с указанием, какое именно условие.
 
     Условие про статус прогона в таблице decisions/007 **добавлено**, а не
@@ -110,6 +115,12 @@ def check_quality(run: FitRun, session: OdSession) -> None:
     есть, и RMS у него может пройти по числу, но `least_squares` до этих
     элементов не сошёлся, и публиковать их нельзя. Ужесточение порога,
     а не ослабление, — но записано в decisions/007 вместе с этим кодом.
+
+    Сессии здесь больше нет. С фазы 7 затравку сессии можно менять
+    (`PUT /sessions/{uuid}/seed`), а расхождение обязано считаться от той
+    затравки, **из которой этот прогон фитили**: иначе одна правка затравки
+    пересуживает всю историю прогонов по элементам, которых они не видели.
+    Она лежит в самом прогоне — `elements_in` (правило 10).
     """
     if run.status != "ok":
         raise ConflictError(
@@ -128,12 +139,18 @@ def check_quality(run: FitRun, session: OdSession) -> None:
             f"наблюдений {n_observations}, нужно хотя бы {MIN_OBSERVATIONS}"
         )
 
+    fitted = Elements.from_tle(run.tle.tle1, run.tle.tle2)
+    if fitted.ecc <= MIN_ECC:
+        raise ConflictError(
+            f"эксцентриситет {fitted.ecc:.2e} схлопнулся в ноль: "
+            f"нужно больше {MIN_ECC:.0e}"
+        )
+
     # Расхождение с затравкой на эпохе прогона: фит, уехавший на сотни
     # километров, это не уточнение орбиты, а другой объект или развалившийся
     # оптимизатор. Сравнивается **положение**, а не элементы: при `e ≈ 0`
     # `argp` и `M` вырождены (algorithms.md §5).
-    seed = Elements.from_tle(session.seed.tle1, session.seed.tle2)
-    fitted = Elements.from_tle(run.tle.tle1, run.tle.tle2)
+    seed = elements_from_dict(run.elements_in)
     separation = separation_km(seed, fitted, run.epoch_mjd)
     if separation > MAX_SEPARATION_KM:
         raise ConflictError(

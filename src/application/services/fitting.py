@@ -56,13 +56,25 @@ assert set(PARAM_NAMES) == {core for _, core in SIGMA_FIELDS}, (
 
 
 def prior_sigmas(
-    request: PriorSigmasSchema | None, settings: FitSettings
+    request: PriorSigmasSchema | None,
+    settings: FitSettings,
+    *,
+    priors_off: bool = False,
 ) -> tuple[np.ndarray, float]:
     """Семь σ в порядке `PARAM_NAMES` плюс σ на `argp + M`.
 
     Незаданное поле берётся из конфигурации, а не заменяется нулём: σ = 0
     означала бы жёстко зажатый параметр, чего в decisions/004 нет.
+
+    `priors_off` — σ = ∞: приорный член вектора невязок обнуляется, потому что
+    `(a − a_seed)/∞ = 0`. Масштаб параметров при этом **не уезжает**: он
+    отдельная величина (`PARAM_SCALE`, см. шапку `domain/od/fit.py`), и именно
+    поэтому выключение приоров здесь безопасно, а объединённая формула
+    из algorithms.md §4.1 давала бы ecc = 0.4995.
     """
+    if priors_off:
+        return np.full(7, np.inf), float("inf")
+
     values = [
         getattr(request, field, None) if request else None for field, _ in SIGMA_FIELDS
     ]
@@ -85,8 +97,15 @@ def prior_sigmas(
     return sigmas, argp_plus_m
 
 
-def sigmas_to_dict(sigmas: np.ndarray, argp_plus_m: float) -> dict[str, float]:
-    """Блок для `od_fit_runs.config`: без сохранённых σ прогон невоспроизводим."""
+def sigmas_to_dict(sigmas: np.ndarray, argp_plus_m: float) -> dict[str, float] | None:
+    """Блок для `od_fit_runs.config`: без сохранённых σ прогон невоспроизводим.
+
+    При выключенных приорах — `None`, а не словарь бесконечностей: `Infinity`
+    не сериализуется в JSON стандартным кодировщиком, и в JSONB такой прогон
+    просто не записался бы. Флаг `priors_off` рядом в том же `config`.
+    """
+    if not np.all(np.isfinite(sigmas)):
+        return None
     block = {field: float(sigmas[i]) for i, (field, _) in enumerate(SIGMA_FIELDS)}
     block["argp_plus_m_deg"] = float(argp_plus_m)
     return block
@@ -268,6 +287,22 @@ def elements_to_dict(elements: Elements) -> dict:
         "bstar": elements.bstar,
         "epoch_mjd": elements.epoch_mjd,
     }
+
+
+def elements_from_dict(block: dict) -> Elements:
+    """Обратно к `elements_to_dict`. Нужна порогу публикации: он сравнивает
+    результат с затравкой **того прогона**, а не с текущей затравкой сессии,
+    которую оператор с фазы 7 может менять."""
+    return Elements(
+        incl_deg=block["inclination_deg"],
+        raan_deg=block["raan_deg"],
+        ecc=block["eccentricity"],
+        argp_deg=block["argp_deg"],
+        ma_deg=block["mean_anomaly_deg"],
+        rev_per_day=block["mean_motion_rev_day"],
+        bstar=block["bstar"],
+        epoch_mjd=block["epoch_mjd"],
+    )
 
 
 def elements_schema(block: dict) -> ElementsSchema:

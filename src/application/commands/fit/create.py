@@ -74,13 +74,17 @@ class RunFitInteractor:
                 f"нужно хотя бы {self._settings.MIN_ENABLED_POINTS}"
             )
 
-        sigmas, sigma_argp_plus_m = prior_sigmas(request.prior_sigmas, self._settings)
+        sigmas, sigma_argp_plus_m = prior_sigmas(
+            request.prior_sigmas, self._settings, priors_off=request.priors_off
+        )
         f_scale = self._settings.F_SCALE if request.f_scale is None else request.f_scale
+        free = request.free or "1111111"
 
         seed = Elements.from_tle(session.seed.tle1, session.seed.tle2)
         result = fit(
             seed,
             segments,
+            free=free,
             prior_sigmas=sigmas,
             sigma_argp_plus_m=sigma_argp_plus_m,
             f_scale=f_scale,
@@ -97,6 +101,10 @@ class RunFitInteractor:
             author_sub=author_sub,
             config={
                 "prior_sigmas": sigmas_to_dict(sigmas, sigma_argp_plus_m),
+                "priors_off": request.priors_off,
+                # Без маски прогон невоспроизводим и, что важнее, неотличим
+                # от полного фита в истории (decisions/013).
+                "free": free,
                 "f_scale": f_scale,
                 "max_nfev": self._settings.MAX_NFEV,
                 "observation_ids": sorted(used),

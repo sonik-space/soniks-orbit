@@ -23,6 +23,68 @@ class CreateSessionRequest(BaseModel):
     seed: TleSchema | None = None
 
 
+class AddObservationsRequest(BaseModel):
+    """Дописать наблюдения в существующую сессию — шаг 2 гайда.
+
+    Уже входящие в сессию не считаются ошибкой и просто пропускаются:
+    повторный вызов с тем же списком обязан быть безвредным.
+    """
+
+    observation_ids: list[int] = Field(min_length=1)
+
+
+class SeedElementsSchema(BaseModel):
+    """Элементы затравки, заданные руками — меню `c` из `rffit.c:753-780`.
+
+    Отдельно от `ElementsSchema`: та описывает результат и все поля в ней
+    обязательны, а здесь оператор правит один элемент из семи и не должен
+    переписывать остальные шесть. Незаданное берётся из текущей затравки.
+
+    Частоты тут нет намеренно. В `rffit` пункт 12 меню задаёт `d.ffit`, потому
+    что несущая там одна на весь набор и её иногда приходится ставить руками.
+    У нас несущая своя на каждое наблюдение и решается в замкнутом виде
+    (decisions/003) — задавать её нечем и незачем.
+    """
+
+    inclination_deg: float | None = Field(default=None, ge=0.0, le=180.0)
+    raan_deg: float | None = None
+    eccentricity: float | None = Field(default=None, ge=0.0, lt=1.0)
+    argp_deg: float | None = None
+    mean_anomaly_deg: float | None = None
+    mean_motion_rev_day: float | None = Field(default=None, gt=0.0)
+    bstar: float | None = None
+    epoch: datetime | None = None
+    satno: int | None = Field(default=None, ge=1)
+    name: str | None = None
+    intldes: str | None = Field(default=None, max_length=8)
+
+
+class UpdateSeedRequest(BaseModel):
+    """Замена затравки сессии. Ровно один из трёх способов.
+
+    Затравка перестала быть неизменяемой (decisions/014). Порог публикации
+    от этого **не** поехал: он судит расхождение по `elements_in` прогона,
+    то есть по той затравке, из которой прогон фитили.
+    """
+
+    # Готовые строки: результат чужого фита, свежий Space-Track, что угодно.
+    tle: TleSchema | None = None
+    # Правка отдельных элементов поверх текущей затравки.
+    elements: SeedElementsSchema | None = None
+    # Грубый шаблон, когда затравки нет вовсе (клавиша `t` в `rffit`).
+    template: Literal["leo", "gto", "gso", "heo"] | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> Self:
+        given = [f for f in ("tle", "elements", "template") if getattr(self, f) is not None]
+        if len(given) != 1:
+            raise ValueError(
+                "нужен ровно один из tle, elements, template; передано: "
+                + (", ".join(given) or "ничего")
+            )
+        return self
+
+
 class SessionObservationResponse(BaseModel):
     observation_id: int
     start: datetime | None = None

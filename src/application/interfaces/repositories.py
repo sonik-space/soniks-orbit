@@ -69,6 +69,45 @@ class SessionRepository(Protocol):
         """`draft` → `fitted` после удачного прогона."""
         ...
 
+    async def delete(self, session_uuid: UUID) -> bool:
+        """Удаляет сессию вместе с наблюдениями. `False` — её уже не было.
+
+        Прогоны фита уходят каскадом вместе с ней: они не имеют смысла
+        в отрыве от точек, по которым считались.
+        """
+        ...
+
+    async def add_observations(
+        self, session_uuid: UUID, observations: list[tuple[int, dict[str, Any]]]
+    ) -> list[ObservationTrack]:
+        """Дописывает наблюдения в существующую сессию.
+
+        Возвращает **только заведённые**: на паре `(сессия, наблюдение)` стоит
+        уникальный индекс, и повторное добавление того же наблюдения ничего
+        не меняет и не является ошибкой.
+        """
+        ...
+
+    async def remove_observation(
+        self, session_uuid: UUID, observation_id: int
+    ) -> bool:
+        """Убирает наблюдение из сессии. `False` — его там не было.
+
+        Прогоны фита не трогаются: они хранят свои `observation_ids`,
+        невязки и точки, и задним числом переписывать их нельзя (правило 10).
+        """
+        ...
+
+    async def set_seed(
+        self, session_uuid: UUID, *, seed: TleLines, seed_source: str
+    ) -> None:
+        """Замена затравки сессии (decisions/014).
+
+        Прогоны фита не трогаются: каждый хранит свою затравку в `elements_in`,
+        и порог публикации судит расхождение по ней, а не по этой строке.
+        """
+        ...
+
 
 class FitRunRepository(Protocol):
     """Прогоны фита. Отдельный протокол, а не рост `SessionRepository`:
