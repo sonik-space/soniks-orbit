@@ -1,4 +1,4 @@
-"""Два нетривиальных места инфраструктуры: курсор в заголовке `Link` и кеш PNG.
+"""Нетривиальные места инфраструктуры: курсор `Link`, кеш PNG и кеш каталога.
 
 Сети не требуют: httpx подменяется `MockTransport`. Асинхронность гоняется
 через `asyncio.run`, чтобы не тащить `pytest-asyncio` ради двух тестов
@@ -14,6 +14,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from infrastructure.catalog.cache import CachedCatalog
 from infrastructure.images.loader import CachedWaterfallImages, png_text_chunks
 from infrastructure.network_api.django import DjangoNetworkApi, _next_page
 
@@ -97,3 +98,61 @@ def test_png_text_chunks_ignores_what_is_not_a_png() -> None:
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__]))
+
+
+class _FakeCatalogApi:
+    """Только тот метод протокола, который зовёт кеш (правило 5: фейк
+    реализует вызываемое, а не весь интерфейс)."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def list_catalog(self) -> list[dict]:
+        self.calls += 1
+        return [
+            {
+                "satellite": {"norad_cat_id": 64880, "name": "Geoscan-1"},
+                "latest": {
+                    "tle0": "0 Geoscan-1",
+                    "tle1": "1 64880U 25155E   26228.44000000  .00000000  00000-0"
+                    "  00000-0 0  9990",
+                    "tle2": "2 64880  97.4000 300.0000 0006000 100.0000 260.0000"
+                    " 15.20000000 10000",
+                },
+            }
+        ]
+
+
+def test_catalog_is_fetched_once_while_fresh(tmp_path) -> None:
+    """Каталог, в отличие от водопада, **изменяем**: TLE в сети обновляется
+    каждые 4 часа. Поэтому у кеша есть срок годности, и он же держит
+    обращения к единственному троттлируемому эндпоинту сети
+    (`/api/latesttles/`, 60/мин на IP) на два порядка ниже лимита."""
+    api = _FakeCatalogApi()
+
+    async def read_twice() -> list:
+        catalog = CachedCatalog(api, tmp_path, ttl_seconds=3600.0)
+        await catalog.objects()
+        return await catalog.objects()
+
+    objects = asyncio.run(read_twice())
+
+    assert api.calls == 1
+    assert [o.norad_id for o in objects] == [64880]
+    assert objects[0].launch == "25155"
+    assert (tmp_path / "latest_tles.json").exists()
+
+
+def test_stale_catalog_is_refetched(tmp_path) -> None:
+    """Протухший кеш обязан идти в сеть. Проверка отдельная потому, что
+    отвалившийся срок годности выглядит как исправный кеш: объекты те же,
+    просто вчерашние, и перебор молча ранжирует по устаревшим элементам."""
+    api = _FakeCatalogApi()
+
+    async def read_twice() -> None:
+        catalog = CachedCatalog(api, tmp_path, ttl_seconds=-1.0)
+        await catalog.objects()
+        await catalog.objects()
+
+    asyncio.run(read_twice())
+    assert api.calls == 2

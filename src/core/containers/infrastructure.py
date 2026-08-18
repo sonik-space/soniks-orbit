@@ -10,27 +10,40 @@ from dishka import Provider, Scope
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
+from application.interfaces.catalog import Catalog
 from application.interfaces.image_fetcher import WaterfallImages
 from application.interfaces.network_api import NetworkApi
-from application.interfaces.repositories import FitRunRepository, SessionRepository
-from application.interfaces.tasks import ExtractionQueue
+from application.interfaces.repositories import (
+    FitRunRepository,
+    IdentificationRepository,
+    SessionRepository,
+)
+from application.interfaces.tasks import ExtractionQueue, IdentificationQueue
 from application.interfaces.transaction import Transaction
 from core.configs import settings
 from core.configs.app import AppSettings
 from core.configs.auth import AuthSettings
+from core.configs.catalog import CatalogSettings
 from core.configs.database import PostgresSettings, SQLEngineSettings
 from core.configs.fit import FitSettings
 from core.configs.logging import LoggingSettings
 from core.configs.network_api import NetworkApiSettings
 from core.configs.waterfall import WaterfallSettings
 from infrastructure.auth.keycloak import CurrentUser, MockCurrentUser, PyJWKClientCache
+from infrastructure.catalog.cache import CachedCatalog
 from infrastructure.images.loader import CachedWaterfallImages
 from infrastructure.network_api.django import DjangoNetworkApi
 from infrastructure.postgres.database import get_engine, get_session, get_sessionmaker
 from infrastructure.postgres.repositories.fit import SQLAlchemyFitRunRepository
+from infrastructure.postgres.repositories.identification import (
+    SQLAlchemyIdentificationRepository,
+)
 from infrastructure.postgres.repositories.session import SQLAlchemySessionRepository
 from infrastructure.postgres.transaction import SQLAlchemyTransaction
-from infrastructure.tasks.queue import TaskiqExtractionQueue
+from infrastructure.tasks.queue import (
+    TaskiqExtractionQueue,
+    TaskiqIdentificationQueue,
+)
 
 
 def get_logger(logging_settings: LoggingSettings) -> Logger:
@@ -56,6 +69,12 @@ def get_network_api(
 ) -> NetworkApi:
     return DjangoNetworkApi(
         client, api_settings.BASE_URL, api_settings.TIMEOUT_IN_SECONDS
+    )
+
+
+def get_catalog(api: NetworkApi, catalog_settings: CatalogSettings) -> Catalog:
+    return CachedCatalog(
+        api, catalog_settings.CACHE_DIR, catalog_settings.TTL_IN_SECONDS
     )
 
 
@@ -88,7 +107,11 @@ def gateway_provider() -> Provider:
     provider.provide(SQLAlchemyTransaction, provides=Transaction)
     provider.provide(SQLAlchemySessionRepository, provides=SessionRepository)
     provider.provide(SQLAlchemyFitRunRepository, provides=FitRunRepository)
+    provider.provide(
+        SQLAlchemyIdentificationRepository, provides=IdentificationRepository
+    )
     provider.provide(TaskiqExtractionQueue, provides=ExtractionQueue)
+    provider.provide(TaskiqIdentificationQueue, provides=IdentificationQueue)
     return provider
 
 
@@ -97,6 +120,7 @@ def network_provider() -> Provider:
     provider.provide(get_http_client, provides=httpx.AsyncClient)
     provider.provide(get_network_api, provides=NetworkApi)
     provider.provide(get_waterfall_images, provides=WaterfallImages)
+    provider.provide(get_catalog, provides=Catalog)
     return provider
 
 
@@ -124,5 +148,6 @@ def settings_provider() -> Provider:
     provider.from_context(LoggingSettings)
     provider.from_context(NetworkApiSettings)
     provider.from_context(WaterfallSettings)
+    provider.from_context(CatalogSettings)
     provider.from_context(FitSettings)
     return provider

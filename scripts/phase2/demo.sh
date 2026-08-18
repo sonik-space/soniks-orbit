@@ -271,3 +271,71 @@ for r in rows[:5]:
         r["published_at"], r["published_mode"], r["norad_id"],
         r["rms_khz"], r["n_points"], r["published_tle_id"]))
 '
+
+# ---------------------------------------------------------------------------
+# Шаг 10 — фаза 6. В каталог сети он тоже не пишет: перебор только читает,
+# а подтверждение создаёт сессию у нас.
+
+echo
+echo "10. POST ${BASE}/identifications  — перебор каталога (замена клавиши i в rffit)"
+curl -fsS -X POST "${BASE}/identifications" \
+    -H 'Content-Type: application/json' \
+    -d "{\"observation_id\": ${OBS}}" -o /dev/null -w '   поставлено, HTTP %{http_code}\n'
+
+for _ in $(seq 40); do
+    IDENT=$(curl -fsS "${BASE}/identifications?limit=1" \
+        | python3 -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["uuid"] if rows else "")')
+    [ -n "${IDENT}" ] && break
+    sleep 3
+done
+[ -n "${IDENT}" ] || { echo "   задание так и не появилось"; exit 1; }
+
+curl -fsS "${BASE}/identifications/${IDENT}" | python3 -c '
+import json, sys
+
+d = json.load(sys.stdin)
+best = d["candidates"][0]
+print("   стадия {}, кандидатов {}, отрыв {:.1f}x".format(
+    d["stage"], len(d["candidates"]), d["margin"]))
+for c in d["candidates"][:3]:
+    print("   {:9.4f} кГц  {:6d}  {:9s} запуск:{}  {}".format(
+        c["rms_khz"], c["norad_id"], c["intdes"], c["same_launch"], c["name"][:24]))
+
+# Ранжирования достаточно только потому, что отрыв велик (decisions/006).
+# Порядок величины здесь и есть проверяемое свойство: правильный объект
+# даёт RMS на порядок меньше остальных, и человеку остаётся подтверждение.
+assert d["margin"] > 10.0, "отрыв {:.2f}x — кандидаты неразличимы".format(d["margin"])
+assert best["same_launch"], "победитель обязан прийти из перебора по запуску"
+print("   отрыв на порядок ✓")
+'
+
+echo "   10a. GET .../track — водопад задания и кривая лучшего кандидата"
+curl -fsS "${BASE}/identifications/${IDENT}/track" | python3 -c '
+import json, sys
+
+t = json.load(sys.stdin)
+print("   объект кривой {}, точек трека {}, точек кривой {}".format(
+    t["norad_id"], len(t["points"]["mjd"]), len(t["model"]["mjd"])))
+assert t["model"] is not None, "кривую считает сервер, а не фронт (правило 9)"
+'
+
+echo "   10b. POST .../confirm — идентификация перетекает в уточнение"
+IDENT_SESSION=$(curl -fsS -X POST "${BASE}/identifications/${IDENT}/confirm" \
+    -H 'Content-Type: application/json' -d '{"norad_id": 64880}' \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_uuid"])')
+echo "   создана сессия ${IDENT_SESSION}"
+
+curl -fsS "${BASE}/sessions/${IDENT_SESSION}" | python3 -c '
+import json, sys
+
+s = json.load(sys.stdin)
+o = s["observations"][0]
+print("   {}  norad {}  точек {}  RMS {:.4f} кГц".format(
+    s["name"], s["norad_id"], o["n_points"], o["rms_khz"]))
+
+# Точки переезжают из задания как есть: извлечение уже отработало при переборе,
+# и второй раз качать водопад незачем. Статус `ok` сразу, без ожидания очереди.
+assert o["extraction_status"] == "ok", "точки обязаны приехать готовыми"
+assert o["n_points"] > 0, "сессия без точек означает повторное извлечение"
+print("   точки перенесены без повторного извлечения ✓")
+'

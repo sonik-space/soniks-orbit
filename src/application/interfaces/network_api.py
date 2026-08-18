@@ -34,6 +34,26 @@ class NetworkApi(Protocol):
         """Запись передатчика по uuid: нужны `baud` и `downlink_low`."""
         ...
 
+    async def list_catalog(self) -> list[dict[str, Any]]:
+        """Активный каталог целиком: объект плюс его последнее TLE.
+
+        **Одним запросом.** Пагинации у этого эндпоинта нет вовсе (замер:
+        2901 объект, 1.1 МБ), поэтому обещанного в первой редакции
+        integration.md `list_launch_objects(intdes)` не существует: объекты
+        запуска — фильтр по тому же списку. Единственный троттлируемый
+        эндпоинт сети, 60/мин на IP, а нужен один запрос в час.
+        """
+        ...
+
+    async def list_unknown_satellites(self) -> list[dict[str, Any]]:
+        """Спутники, не опознанные каталогом, — очередь идентификации.
+
+        Это объекты, заведённые автоматически по объектам запуска
+        с Celestrak (`unknown=True` ставит `parse_csv_and_create_satellites`
+        в монолите). Тоже одним запросом и без пагинации.
+        """
+        ...
+
     async def publish_tle(
         self, *, norad_id: int, lines: TleLines, url: str, access_token: str
     ) -> int:

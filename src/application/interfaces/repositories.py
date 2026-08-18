@@ -1,7 +1,4 @@
-"""Хранение сессий уточнения и прогонов фита.
-
-Репозиторий заданий идентификации появится в фазе 6 вместе со сценарием.
-"""
+"""Хранение сессий уточнения, прогонов фита и заданий идентификации."""
 
 from __future__ import annotations
 
@@ -11,6 +8,7 @@ from uuid import UUID
 
 from domain.models import (
     FitRun,
+    Identification,
     ObservationTrack,
     OdSession,
     Publication,
@@ -124,4 +122,55 @@ class FitRunRepository(Protocol):
 
     async def list_published(self, since: datetime) -> list[Publication]:
         """Публикации и предложения свежее указанного момента, новые сверху."""
+        ...
+
+
+class IdentificationRepository(Protocol):
+    """Задания идентификации. Отдельный протокол по той же причине, что
+    и `FitRunRepository`: свой сценарий, своя таблица."""
+
+    async def upsert(
+        self,
+        *,
+        observation_id: int,
+        stage: str,
+        candidates: list[dict[str, Any]],
+        meta: dict[str, Any],
+        calibration: dict | None,
+        points: dict | None,
+        diagnostics: dict | None,
+    ) -> Identification:
+        """Заводит задание либо переписывает результат перебора.
+
+        Не `create`: у задач стоит `retry_on_error=True`, сканер перебирает
+        окно с перекрытием, а каталог между прогонами обновляется. Повтор
+        обязан обновить задание, а не завести второе.
+
+        Победитель предварителен — соседние объекты каталога стоят близко,
+        и повторный перебор может назвать другого. Решение человека
+        (`confirmed` / `rejected`) повтор не трогает.
+        """
+        ...
+
+    async def get(self, identification_uuid: UUID) -> Identification | None: ...
+
+    async def list(self, *, stage: str | None, limit: int) -> list[Identification]:
+        """Задания, новые сверху. `stage=None` — все."""
+        ...
+
+    async def known_observation_ids(self, observation_ids: list[int]) -> set[int]:
+        """Какие наблюдения уже разбирались: сканеру незачем скачивать
+        их водопады второй раз."""
+        ...
+
+    async def resolve(
+        self,
+        identification_uuid: UUID,
+        *,
+        stage: str,
+        norad_id: int | None,
+        by_sub: str,
+        session_uuid: UUID | None = None,
+    ) -> None:
+        """Подтверждение или отклонение человеком."""
         ...

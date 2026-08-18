@@ -109,11 +109,36 @@ class OdFitRunORM(UUIDMixin, TimestampMixin, BaseORM):
 
 
 class OdIdentificationORM(UUIDMixin, TimestampMixin, BaseORM):
+    """Задание идентификации: одно наблюдение и ранжированные кандидаты.
+
+    Уникальность по `observation_id` не украшение: у задач стоит
+    `retry_on_error=True`, а сканер перебирает окно с перекрытием, поэтому
+    без неё повтор задачи завёл бы второе задание на то же наблюдение.
+    """
+
     __tablename__ = "od_identifications"
+    __table_args__ = (UniqueConstraint("observation_id"),)
 
     observation_id: Mapped[int]
-    stage: Mapped[str] = mapped_column(default="screening")
+    stage: Mapped[str] = mapped_column(default="screening", index=True)
 
+    # ponytail: кандидаты лежат блоком в JSONB, а не таблицей od_candidates.
+    #           Потолок: SQL по отдельному кандидату невозможен.
+    #           Они всегда пишутся и читаются целиком, а список ограничен
+    #           объёмом каталога и живёт до подтверждения.
+    #           Разносить, если понадобится аналитика по кандидатам.
     candidates: Mapped[dict] = mapped_column(JSONB)
     confirmed_norad_id: Mapped[int | None]
     confirmed_by_sub: Mapped[str | None]
+
+    # Тот же замороженный снимок и та же форма точек, что у наблюдения сессии
+    # (правило 10). Сессии у задания нет: она появляется только при
+    # подтверждении и получает эти же точки, без повторного извлечения.
+    meta: Mapped[dict] = mapped_column(JSONB)
+    calibration: Mapped[dict | None] = mapped_column(JSONB)
+    points: Mapped[dict | None] = mapped_column(JSONB)
+    diagnostics: Mapped[dict | None] = mapped_column(JSONB)
+
+    session_uuid: Mapped[UUID | None] = mapped_column(
+        ForeignKey("od_sessions.uuid", ondelete="SET NULL")
+    )

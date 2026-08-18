@@ -97,6 +97,40 @@ class DjangoNetworkApi(NetworkApi):
         self._transmitters[uuid] = items[0] if items else None
         return self._transmitters[uuid]
 
+    async def list_catalog(self) -> list[dict[str, Any]]:
+        """`GET /api/latesttles/` — весь каталог одним неразбитым ответом.
+
+        `LatestTleView` не задаёт `pagination_class`, а глобального умолчания
+        в монолите нет, поэтому ответ приходит целиком: замер дал 2901 объект
+        и 1.1 МБ. Ходить постранично тут не за чем и нечем.
+
+        Это **единственный** троттлируемый эндпоинт из тех, что сервис читает:
+        `ScopedRateThrottle`, 60/мин, у анонимных по IP (замер: 429 ровно
+        на 61-м запросе, `Retry-After: 32`). Кеш держит обращения на уровне
+        одного в час, так что запас двукратный по порядку величины.
+        """
+        r = await self._client.get(
+            f"{self._base}/api/latesttles/", timeout=self._timeout
+        )
+        r.raise_for_status()
+        return r.json()
+
+    async def list_unknown_satellites(self) -> list[dict[str, Any]]:
+        """`GET /api/satellites/?unknown=true` — тоже одним ответом.
+
+        Фильтра `satellite__unknown` у наблюдений нет, поэтому сканер сначала
+        берёт список объектов, а потом наблюдения по каждому. Замер: 2672
+        объекта из 3383 помечены `unknown`, но в свежем потоке наблюдений
+        на них приходится 2.4%, то есть порядка шести заданий в сутки.
+        """
+        r = await self._client.get(
+            f"{self._base}/api/satellites/",
+            params={"unknown": "true"},
+            timeout=self._timeout,
+        )
+        r.raise_for_status()
+        return r.json()
+
     async def publish_tle(
         self, *, norad_id: int, lines: TleLines, url: str, access_token: str
     ) -> int:

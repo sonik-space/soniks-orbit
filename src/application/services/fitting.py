@@ -22,7 +22,11 @@ from application.dtos.fit import (
     PriorSigmasSchema,
     ResidualsResponse,
 )
-from application.dtos.session import LatestFitResponse, ModelCurveResponse
+from application.dtos.session import (
+    CalibrationResponse,
+    LatestFitResponse,
+    ModelCurveResponse,
+)
 from core.configs.fit import FitSettings
 from domain.models import FitRun, ObservationTrack, TleLines
 from domain.od.doppler import fac as doppler_fac
@@ -197,6 +201,37 @@ def model_curve(
     # Обратно к оси водопада той же формулой ядра: f_abs = f_центра − f_смещение.
     f_offset_hz = calibration["center_freq_hz"] - f_abs_hz
     return ModelCurveResponse(mjd=mjd.tolist(), f_offset_hz=f_offset_hz.tolist())
+
+
+def calibration_schema(raw: dict | None) -> CalibrationResponse | None:
+    """Блок калибровки из JSONB в форму API.
+
+    Границы оси времени отдаются в ISO: MJD — внутренний формат ядра, наружу
+    время идёт как ISO 8601 UTC (правило 2). Имена полей тоже расходятся
+    (`samp_rate_hz` против `samp_rate`), поэтому мэппинг обязан быть один:
+    его зовут и трек наблюдения сессии, и трек задания идентификации.
+    """
+    if not raw:
+        return None
+
+    t_min = raw["t_bottom_mjd"]
+    t_max = t_min + (raw["plot_h"] - 1) * raw["sec_per_px"] / 86400.0
+    return CalibrationResponse(
+        img_w=raw["img_w"],
+        img_h=raw["img_h"],
+        plot_left=raw["plot_left"],
+        plot_top=raw["plot_top"],
+        plot_w=raw["plot_w"],
+        plot_h=raw["plot_h"],
+        t_min=iso_from_mjd(t_min),
+        t_max=iso_from_mjd(t_max),
+        f_min_hz=raw["f_min_hz"],
+        f_max_hz=raw["f_max_hz"],
+        center_freq_hz=raw["center_freq_hz"],
+        samp_rate=raw["samp_rate_hz"],
+        nchan=raw["nchan"],
+        bin_hz=raw["bin_hz"],
+    )
 
 
 def curve_inputs(track: ObservationTrack) -> dict | None:

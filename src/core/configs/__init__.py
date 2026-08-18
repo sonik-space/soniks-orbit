@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from core.configs.app import AppSettings
 from core.configs.auth import AuthSettings
 from core.configs.broker import AioPikaBrokerSettings, RabbitSettings
+from core.configs.catalog import CatalogSettings
 from core.configs.cors import CORSSettings
 from core.configs.database import AlembicSettings, PostgresSettings, SQLEngineSettings
 from core.configs.fit import FitSettings
@@ -29,6 +30,7 @@ class Settings(BaseSettings):
     cors: CORSSettings = CORSSettings()
     network_api: NetworkApiSettings = NetworkApiSettings()
     waterfall: WaterfallSettings = WaterfallSettings()
+    catalog: CatalogSettings = CatalogSettings()
     fit: FitSettings = FitSettings()
 
 
@@ -40,6 +42,7 @@ __all__ = [
     "AppSettings",
     "AuthSettings",
     "CORSSettings",
+    "CatalogSettings",
     "FitSettings",
     "LoggingSettings",
     "NetworkApiSettings",

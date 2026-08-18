@@ -96,11 +96,35 @@ Postgres, SQLAlchemy 2 (async). Миксины `UUIDMixin` / `TimestampMixin` б
 | Поле | Тип | Смысл |
 |---|---|---|
 | `uuid` | UUID PK | |
-| `observation_id` | int | |
-| `stage` | str | `screening` / `fitted` / `confirmed` / `rejected` |
-| `candidates` | JSONB | `[{norad_id, name, intdes, rms_khz, carrier_hz, stage}]` |
+| `observation_id` | int, **уникален** | |
+| `stage` | str | `screening` / `confirmed` / `rejected` |
+| `candidates` | JSONB | `[{norad_id, name, intdes, rms_khz, carrier_hz, same_launch, tle0/1/2}]` |
 | `confirmed_norad_id` | int, null | |
 | `confirmed_by_sub` | str, null | |
+| `meta` | JSONB | **замороженный** ответ Django API |
+| `calibration` | JSONB, null | как у наблюдения сессии |
+| `points` | JSONB, null | как у наблюдения сессии |
+| `diagnostics` | JSONB, null | как у наблюдения сессии |
+| `session_uuid` | FK → `od_sessions`, SET NULL | куда перетекло подтверждение |
+
+Стадии `fitted` нет: полный фит кандидатов отменён замером фазы 6 —
+он роняет отрыв со ×177 до ×1.06 и в идентификации не участвует
+([decisions/006](decisions/006-identification.md)).
+
+**Уникальность `observation_id` — не украшение.** У задач стоит
+`retry_on_error=True`, а сканер перебирает окно с перекрытием: без неё повтор
+завёл бы второе задание на то же наблюдение. Повтор **обновляет** результат,
+пока стадия `screening`; решение человека он не трогает.
+
+Четыре блока наблюдения — `meta`, `calibration`, `points`, `diagnostics` —
+повторяют `od_session_observations` не по недосмотру. Это правило 10: без
+замороженного TLE наблюдения RMS кандидата невоспроизводим, а сессии
+у задания ещё нет. Побочная выгода — подтверждение переносит готовые точки
+в созданную сессию, без второго скачивания PNG и второго извлечения.
+
+Строки TLE лежат прямо в кандидате, потому что затравкой сессии идут именно
+они: каталог обновляется каждые 4 часа, человек подтверждает позже, и
+затравкой обязана стать та строка, по которой считался показанный ему RMS.
 
 ---
 
@@ -169,3 +193,6 @@ Postgres, SQLAlchemy 2 (async). Миксины `UUIDMixin` / `TimestampMixin` б
 - PNG водопадов — кешируются на диске по `observation_id` (они неизменяемы),
   но не в БД.
 - Каталог для идентификации — кеш в `infrastructure/catalog/`, не таблица.
+  Один файл на весь каталог (замер: 2901 объект, 1.1 МБ одним запросом)
+  плюс разобранный список в памяти. В отличие от кеша водопадов у него есть
+  срок годности: водопад неизменяем, а TLE в сети обновляется каждые 4 часа.

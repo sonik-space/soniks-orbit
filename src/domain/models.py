@@ -15,12 +15,45 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from domain.od.elements import Elements
+
 
 @dataclass(frozen=True)
 class TleLines:
     tle0: str
     tle1: str
     tle2: str
+
+
+@dataclass(frozen=True)
+class CatalogObject:
+    """Объект активного каталога сети вместе с разобранными элементами.
+
+    Элементы разбираются один раз при сборке кеша, а не на каждый скрининг:
+    кандидатов около трёх тысяч, и `Satrec.twoline2rv` по ним на каждое
+    наблюдение был бы чистой потерей.
+
+    Строки TLE хранятся рядом с элементами, потому что подтверждение
+    идентификации кладёт затравкой в сессию именно **их** — ту строку,
+    по которой считался RMS, а не свежую из каталога (правило 10).
+    """
+
+    norad_id: int
+    name: str
+    intdes: str  # международное обозначение `YYNNNPPP` из `tle1[9:17]`
+    tle: TleLines
+    elements: Elements
+
+    @property
+    def launch(self) -> str:
+        """`YYNNN` — общая часть обозначения у всех объектов одного запуска.
+
+        Отдельного эндпоинта для этого нет: в монолите нет ни `/api/launches/`,
+        ни поля с обозначением на спутнике, а фильтр `?launch__id=` принимает
+        первичный ключ БД. Обозначение же лежит в самой строке TLE
+        (integration.md).
+        """
+        return self.intdes[:5]
 
 
 @dataclass(frozen=True)
@@ -108,6 +141,45 @@ class Publication:
     author_sub: str
     rms_khz: float
     n_points: int
+
+
+@dataclass(frozen=True)
+class Identification:
+    """Задание идентификации: одно наблюдение и ранжированные кандидаты.
+
+    Снимок ответа API, калибровка и точки лежат здесь по тому же правилу 10,
+    что и у наблюдения сессии: без замороженного TLE наблюдения RMS кандидата
+    невоспроизводим. Побочная выгода — подтверждение переносит готовые точки
+    в созданную сессию, без второго скачивания PNG и второго извлечения.
+    """
+
+    uuid: UUID
+    created_at: datetime
+    observation_id: int
+    stage: str  # screening / confirmed / rejected
+    candidates: list[dict[str, Any]]
+    meta: dict[str, Any]
+    calibration: dict | None = None
+    points: dict | None = None
+    diagnostics: dict | None = None
+    confirmed_norad_id: int | None = None
+    confirmed_by_sub: str | None = None
+    session_uuid: UUID | None = None
+
+    @property
+    def track(self) -> ObservationTrack:
+        """То же наблюдение в виде, который понимают `build_segments`
+        и `model_curve`. Сессии у задания нет, а наблюдение — есть,
+        и второй сборки сегментов заводить незачем (правило 8)."""
+        return ObservationTrack(
+            uuid=self.uuid,
+            observation_id=self.observation_id,
+            meta=self.meta,
+            extraction_status="ok",
+            calibration=self.calibration,
+            points=self.points,
+            diagnostics=self.diagnostics,
+        )
 
 
 @dataclass(frozen=True)

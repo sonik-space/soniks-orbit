@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Кеш водопадов: файлы неизменяемы, без кеша нагрузка на S3 избыточна
 # (decisions/009).
-RUN mkdir -p /var/cache/soniks-orbit/waterfalls && \
+RUN mkdir -p /var/cache/soniks-orbit/waterfalls /var/cache/soniks-orbit/catalog && \
     chown -R $uid:$uid /var/cache/soniks-orbit
 
 COPY src ./src/

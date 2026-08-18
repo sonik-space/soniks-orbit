@@ -137,6 +137,30 @@ def rms_khz(resid: np.ndarray) -> float:
     return float(np.sqrt(np.sum(resid**2) / resid.size))
 
 
+def screen(
+    elements: Elements, segments: list[Segment]
+) -> tuple[float, dict[str, float]] | None:
+    """Оценка кандидата **без движения элементов**: RMS и несущие.
+
+    Первая ступень идентификации (algorithms.md §6): одна векторная прогонка
+    SGP4 по точкам трека плюс профилирование несущей в замкнутом виде.
+    Зеркало `fit_curve(orb, ia)` с нулевой маской свободных параметров —
+    именно так `identify_satellite_from_doppler` из `rffit.c:152` оценивает
+    каждый объект каталога под клавишей `i`.
+
+    Это обёртка над `_model`, а не вторая реализация: второй копии снятия
+    доплера и профилирования несущей в проекте быть не должно (правила 8 и 9).
+
+    `None` — SGP4 вернул код ошибки хотя бы в одной точке. Кандидат не
+    отбрасывается молча нулём: у сошедшего с орбиты объекта RMS не определён,
+    а ноль выиграл бы ранжирование.
+    """
+    resid, carriers, ok = _model(
+        elements, segments, per_segment_carrier=True, weighted=True
+    )
+    return (rms_khz(resid), carriers) if ok else None
+
+
 def fit(
     seed: Elements,
     segments: list[Segment],

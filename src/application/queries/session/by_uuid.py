@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import datetime as dt
 from uuid import UUID
 
 from application.dtos.common import TleSchema
 from application.dtos.session import (
-    CalibrationResponse,
     ExtractionStatusResponse,
     PointsResponse,
     SessionObservationResponse,
@@ -16,6 +14,7 @@ from application.dtos.session import (
 )
 from application.interfaces.repositories import FitRunRepository, SessionRepository
 from application.services.fitting import (
+    calibration_schema,
     curve_inputs,
     latest_fit_response,
     model_curve,
@@ -24,8 +23,6 @@ from core.configs.fit import FitSettings
 from domain.exceptions import NotFoundError
 from domain.models import ObservationTrack
 from domain.od.elements import Elements
-
-MJD_UNIX_EPOCH = 40587.0
 
 
 class GetSessionQuery:
@@ -71,7 +68,7 @@ class GetTrackQuery:
             )
 
         return TrackResponse(
-            calibration=_calibration(track.calibration),
+            calibration=calibration_schema(track.calibration),
             waterfall_url=track.waterfall_url,
             points=PointsResponse(**(track.points or {})),
             extraction=ExtractionStatusResponse(
@@ -131,36 +128,4 @@ def _observation(track: ObservationTrack) -> SessionObservationResponse:
         carrier_hz=diag.get("carrier_hz"),
         convention_margin=diag.get("margin"),
         observation_frequency_hz=meta.get("observation_frequency"),
-    )
-
-
-def _calibration(raw: dict | None) -> CalibrationResponse | None:
-    """Границы оси времени отдаются в ISO: MJD — внутренний формат ядра,
-    наружу время идёт как ISO 8601 UTC (правило 2)."""
-    if not raw:
-        return None
-
-    t_min = raw["t_bottom_mjd"]
-    t_max = t_min + (raw["plot_h"] - 1) * raw["sec_per_px"] / 86400.0
-    return CalibrationResponse(
-        img_w=raw["img_w"],
-        img_h=raw["img_h"],
-        plot_left=raw["plot_left"],
-        plot_top=raw["plot_top"],
-        plot_w=raw["plot_w"],
-        plot_h=raw["plot_h"],
-        t_min=_iso(t_min),
-        t_max=_iso(t_max),
-        f_min_hz=raw["f_min_hz"],
-        f_max_hz=raw["f_max_hz"],
-        center_freq_hz=raw["center_freq_hz"],
-        samp_rate=raw["samp_rate_hz"],
-        nchan=raw["nchan"],
-        bin_hz=raw["bin_hz"],
-    )
-
-
-def _iso(mjd: float) -> dt.datetime:
-    return dt.datetime.fromtimestamp(
-        (mjd - MJD_UNIX_EPOCH) * 86400.0, tz=dt.UTC
     )

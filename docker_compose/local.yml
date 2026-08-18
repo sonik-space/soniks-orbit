@@ -48,6 +48,7 @@ services:
     volumes:
       - ../src:/app/src
       - orbit_waterfalls:/var/cache/soniks-orbit/waterfalls
+      - orbit_catalog:/var/cache/soniks-orbit/catalog
     healthcheck:
       # curl нет в облегчённом образе, поэтому проверяем стандартной urllib
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=5)"]
@@ -68,13 +69,29 @@ services:
         condition: service_healthy
     volumes:
       - ../src:/app/src
-      # Кеш общий с API: файлы неизменяемы, качать дважды незачем
+      # Кеши общие с API: водопады неизменяемы, каталог один на всех
       - orbit_waterfalls:/var/cache/soniks-orbit/waterfalls
+      - orbit_catalog:/var/cache/soniks-orbit/catalog
 
-# Планировщика (taskiq scheduler) нет: периодических задач у сервиса пока нет.
-# Redis, MinIO, sqladmin, prometheus и OTLP из soniks-backend не берутся
-# по той же причине — под них нет сценария.
+  # Планировщик появился в фазе 6 вместе со сценарием (правило 12):
+  # decisions/006 требует автомата, а не кнопки, и сканер обязан ходить сам.
+  # Расписание стоит меткой на самой задаче (`LabelScheduleSource`), поэтому
+  # держать его в согласии с кодом не нужно — оно и есть код.
+  orbit-scheduler:
+    build: ../
+    container_name: orbit-scheduler
+    env_file: ../.env
+    command: "taskiq scheduler infrastructure.tasks.scheduler:scheduler"
+    depends_on:
+      orbit-rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ../src:/app/src
+
+# Redis, MinIO, sqladmin, prometheus и OTLP из soniks-backend не берутся:
+# под них нет сценария.
 volumes:
   orbit_postgres_data:
   orbit_rabbitmq_data:
   orbit_waterfalls:
+  orbit_catalog:
