@@ -12,7 +12,13 @@ from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from domain.exceptions import BadRequestError, DomainError, NotFoundError
+from domain.exceptions import (
+    BadRequestError,
+    ConflictError,
+    DomainError,
+    ForbiddenError,
+    NotFoundError,
+)
 from domain.waterfall import CalibrationError
 from infrastructure.auth.keycloak import AuthorizationError
 
@@ -21,6 +27,8 @@ CODES: dict[type[Exception], int] = {
     NotFoundError: status.HTTP_404_NOT_FOUND,
     BadRequestError: status.HTTP_400_BAD_REQUEST,
     AuthorizationError: status.HTTP_401_UNAUTHORIZED,
+    ForbiddenError: status.HTTP_403_FORBIDDEN,
+    ConflictError: status.HTTP_409_CONFLICT,
 }
 
 

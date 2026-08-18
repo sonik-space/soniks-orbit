@@ -2,6 +2,7 @@ import pydantic
 from dishka import Provider
 
 from core.configs import Settings
+from core.configs.app import AppSettings
 from core.configs.auth import AuthSettings
 from core.configs.database import PostgresSettings, SQLEngineSettings
 from core.configs.fit import FitSettings
@@ -38,6 +39,7 @@ def dishka_context(
     settings: Settings,
 ) -> dict[type[pydantic.BaseModel], pydantic.BaseModel]:
     return {
+        AppSettings: settings.app,
         PostgresSettings: settings.postgres,
         SQLEngineSettings: settings.sql_engine,
         AuthSettings: settings.auth,

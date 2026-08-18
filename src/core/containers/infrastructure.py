@@ -16,6 +16,7 @@ from application.interfaces.repositories import FitRunRepository, SessionReposit
 from application.interfaces.tasks import ExtractionQueue
 from application.interfaces.transaction import Transaction
 from core.configs import settings
+from core.configs.app import AppSettings
 from core.configs.auth import AuthSettings
 from core.configs.database import PostgresSettings, SQLEngineSettings
 from core.configs.fit import FitSettings
@@ -116,6 +117,7 @@ def settings_provider() -> Provider:
     """Настройки как зависимости: конфигурация читается один раз, а не
     импортируется `settings` по месту использования."""
     provider = Provider(scope=Scope.APP)
+    provider.from_context(AppSettings)
     provider.from_context(PostgresSettings)
     provider.from_context(SQLEngineSettings)
     provider.from_context(AuthSettings)

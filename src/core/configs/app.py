@@ -23,6 +23,11 @@ class AppSettings(BaseModel):
 
     API_VERSION: str = "v1"
 
+    # Адрес раздела для ссылки на прогон фита, которая уходит в каталог
+    # вместе с опубликованным TLE. В каталоге источник записи неотличим
+    # от ручной, и эта ссылка — единственный провенанс на той стороне.
+    UI_BASE_URL: str = "https://dev2.sonik.space"
+
     @property
     def docs_url(self) -> str:
         return f"/api/{self.API_VERSION}/docs"

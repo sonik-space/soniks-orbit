@@ -78,9 +78,18 @@ Postgres, SQLAlchemy 2 (async). Миксины `UUIDMixin` / `TimestampMixin` б
 | `residuals` | JSONB | `{obs_id: [невязка_кГц, ...]}`, индексы совпадают с `points` |
 | `prior_dominated` | JSONB | какие элементы удержаны приором |
 | `status` | str | `ok` / `failed` |
-| `published_at` | datetime, null | |
+| `published_at` | datetime, null | без зоны, в отличие от `created_at`; приведение к UTC — в репозитории |
 | `published_mode` | str, null | `publish` / `propose` |
-| `published_tle_id` | int, null | id, вернувшийся из Django |
+| `published_tle_id` | int, null | id, вернувшийся из Django; `null` у предложения |
+
+`published_mode = 'propose'` при `published_tle_id = null` — предложение:
+в каталог сети **ничего не записано**, очереди модерации в монолите нет,
+и человек с правами публикует тот же прогон позже (decisions/007).
+Сюда же попадает попытка публикации, отклонённая Django по правам.
+
+Строки `tle0/1/2` при публикации **перезаписываются**: с переносом эпохи
+в каталог уходит не то TLE, что посчитал фит, и хранить надо опубликованное —
+иначе провенанс указывает на строки, которых в каталоге нет.
 
 ### `od_identifications`
 

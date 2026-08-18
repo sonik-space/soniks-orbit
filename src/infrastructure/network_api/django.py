@@ -16,6 +16,8 @@ from typing import Any
 import httpx
 
 from application.interfaces.network_api import NetworkApi
+from domain.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from domain.models import TleLines
 
 DEFAULT_BASE_URL = "https://sonik.space"
 DEFAULT_TIMEOUT = 60.0
@@ -94,6 +96,66 @@ class DjangoNetworkApi(NetworkApi):
         items = r.json()
         self._transmitters[uuid] = items[0] if items else None
         return self._transmitters[uuid]
+
+    async def publish_tle(
+        self, *, norad_id: int, lines: TleLines, url: str, access_token: str
+    ) -> int:
+        """`POST /api/tles/` — единственный write-эндпоинт, который сервис зовёт.
+
+        Токен человека идёт как есть: на той стороне вьюсет проверяет его
+        через тот же Keycloak и решает, владелец ли это спутника
+        (decisions/008). Своей модели прав сервис не держит.
+
+        Коды разбираются здесь, а не у вызывающего: `403` и текст ошибки
+        валидации — это форма ответа Django, и за интерфейсом ей делать нечего.
+
+        **Источник записи не передаётся.** Его ставит монолит, и это `Manual` —
+        первый в `TLE_SOURCE_PRIORITY`, то есть свежая публикация выигрывает
+        `select_latest_tle` у всей сети, включая свежий Space-Track. Отдельного
+        источника `Fitted` не заводится: приоритеты в монолите не правятся
+        вовсе (decisions/007, 010). Раз выбор источника решает, чьи элементы
+        поведут сеть, выбирать его клиенту не дают — и единственное, что стоит
+        между ошибкой оператора и наведением, это порог в
+        `application/commands/fit/publish.py` (правило 11).
+        """
+        r = await self._client.post(
+            f"{self._base}/api/tles/",
+            json={
+                "norad_cat_id": norad_id,
+                "tle0": lines.tle0,
+                "tle1": lines.tle1,
+                "tle2": lines.tle2,
+                "url": url,
+            },
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=self._timeout,
+        )
+        if r.status_code in (401, 403):
+            raise ForbiddenError(_detail(r) or "нет прав на публикацию по этому спутнику")
+        if r.status_code == 404:
+            raise NotFoundError(f"спутник {norad_id} в каталоге сети не найден")
+        if r.status_code >= 400:
+            raise BadRequestError(_detail(r) or f"каталог отказал: HTTP {r.status_code}")
+        return int(r.json()["id"])
+
+
+def _detail(response: httpx.Response) -> str | None:
+    """Текст отказа Django. Он адресован оператору («контрольная сумма строки 1
+    не сходится»), поэтому доезжает до UI, а не заменяется общей формулировкой."""
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    if isinstance(body, dict):
+        detail = body.get("detail") or body.get("error")
+        if isinstance(detail, str):
+            return detail
+        return "; ".join(
+            f"{field}: {', '.join(map(str, messages))}"
+            for field, messages in body.items()
+            if isinstance(messages, list)
+        ) or None
+    return None
 
 
 def _next_page(link_header: str) -> str | None:

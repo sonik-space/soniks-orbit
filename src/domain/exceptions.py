@@ -17,3 +17,11 @@ class NotFoundError(DomainError):
 
 class BadRequestError(DomainError):
     """400: меньше 20 включённых точек, меньше 2 наблюдений для фита и т.п."""
+
+
+class ForbiddenError(DomainError):
+    """403: у вызывающего нет прав на публикацию по этому спутнику."""
+
+
+class ConflictError(DomainError):
+    """409: прогон не прошёл порог качества публикации (правило 11)."""

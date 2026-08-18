@@ -11,14 +11,24 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 
 from .constants import MU_KM3_S2
 from .elements import Elements
 
+# Насколько положение перенесённой модели вправе разойтись с исходной
+# на целевой эпохе. Не подгоняемая ручка: перенос обязан воспроизводить
+# состояние, и метр здесь — запас на численный шум, а не допуск.
+MAX_TRANSFER_RESIDUAL_KM = 1e-3
+
 _D2R = np.pi / 180.0
 _R2D = 180.0 / np.pi
-_ANGLE_IDX = (0, 1, 3, 4)  # incl, raan, argp, M в векторе параметров
+# Углы в векторе неподвижной точки: наклонение, RAAN и средняя долгота
+# перигея `argp + M`. Сам `argp` и сама `M` в этот вектор не входят — почему,
+# написано у `_nonsingular`.
+_ANGLE_IDX = (0, 1, 4)
 
 
 def classel(r_km: np.ndarray, v_km_s: np.ndarray, mjd: float, satno: int = 99999):
@@ -83,6 +93,71 @@ def _state_at(elements: Elements, mjd: float) -> tuple[np.ndarray, np.ndarray]:
     return np.array(r), np.array(v)
 
 
+def _nonsingular(el: Elements) -> np.ndarray:
+    """Вектор неподвижной точки в невырожденных координатах.
+
+        [наклонение, RAAN, e·cos(argp), e·sin(argp), argp + M, n, B*]
+
+    **Итерировать по `(e, argp, M)` нельзя.** Замер на прогоне 64880
+    (`e = 6.1e-4`, `argp + M ≈ 0.1°`): сумма `argp + M` сходится с первого
+    шага и дальше стоит намертво, а слагаемые расходятся ровно на ±43° за шаг
+    в разные стороны, потому что по отдельности они при `e → 0` не определены.
+    Приращение по ним не убывает никогда, критерий `max|delta| < tol`
+    не срабатывает, цикл вырабатывает все 100 шагов и возвращает произвольную
+    точку гребня. Заодно приращение по `e` уходит в минус, `with_vector`
+    зажимает его нулём, и модель с `e = 0` больше не воспроизводит состояние:
+    на этом прогоне ошибка составила **8.4 км**.
+
+    Пара `(e·cos argp, e·sin argp)` определена и при нулевом эксцентриситете,
+    знака не имеет и в зажим не упирается, а `argp + M` — та самая
+    комбинация, которая наблюдаема. Ровно та же замена, по той же причине,
+    уже сделана в приорах фита (`domain/od/fit.py`, decisions/004).
+    """
+    argp = el.argp_deg * _D2R
+    return np.array(
+        [
+            el.incl_deg,
+            el.raan_deg,
+            el.ecc * np.cos(argp),
+            el.ecc * np.sin(argp),
+            (el.argp_deg + el.ma_deg) % 360.0,
+            el.rev_per_day,
+            el.bstar,
+        ],
+        dtype=float,
+    )
+
+
+def _from_nonsingular(vec: np.ndarray, template: Elements) -> Elements:
+    """Обратно к `Elements`. Зажимы те же, что в `Elements.with_vector`."""
+    k, h = float(vec[2]), float(vec[3])
+    ecc = min(float(np.hypot(k, h)), 0.999)
+    argp = float(np.arctan2(h, k)) * _R2D % 360.0
+    return replace(
+        template,
+        incl_deg=float(vec[0]),
+        raan_deg=float(vec[1]) % 360.0,
+        ecc=ecc,
+        argp_deg=argp,
+        ma_deg=(float(vec[4]) - argp) % 360.0,
+        rev_per_day=max(float(vec[5]), 0.05),
+        bstar=float(vec[6]),
+    )
+
+
+def separation_km(a: Elements, b: Elements, mjd: float) -> float:
+    """Расстояние между положениями двух наборов элементов на общий момент.
+
+    Правильная проверка переноса эпохи — сравнение **состояния**, а не
+    элементов: при `e ≈ 0` направления `argp` и `M` вырождены и расходятся
+    поодиночке при неизменной сумме. Этим же числом порог публикации
+    проверяет расхождение результата фита с затравкой (decisions/007).
+    """
+    r_a, _ = _state_at(a, mjd)
+    r_b, _ = _state_at(b, mjd)
+    return float(np.linalg.norm(r_a - r_b))
+
+
 def reepoch(
     seed: Elements,
     target_mjd: float,
@@ -113,19 +188,20 @@ def reepoch(
     """
     r, v = _state_at(seed, target_mjd)
     orb0 = classel(r, v, target_mjd, seed.satno)
+    target = _nonsingular(orb0)
 
     orb = orb0
     for _ in range(max_iterations):
         r1, v1 = _state_at(orb, target_mjd)
         orb1 = classel(r1, v1, target_mjd, seed.satno)
 
-        delta = orb0.to_vector() - orb1.to_vector()
+        delta = target - _nonsingular(orb1)
         delta[list(_ANGLE_IDX)] = (delta[list(_ANGLE_IDX)] + 180.0) % 360.0 - 180.0
-        orb = orb.with_vector(orb.to_vector() + delta)
+        orb = _from_nonsingular(_nonsingular(orb) + delta, orb)
         if np.max(np.abs(delta)) < tol:
             break
 
-    return Elements(
+    moved = Elements(
         incl_deg=orb.incl_deg,
         raan_deg=orb.raan_deg,
         ecc=orb.ecc,
@@ -136,3 +212,15 @@ def reepoch(
         epoch_mjd=target_mjd,
         satno=seed.satno,
     )
+
+    # Проверка **состояния**, а не приращения элементов: несошедшаяся
+    # неподвижная точка уже один раз вернула молча 8.4 км (см. `_nonsingular`),
+    # а результат отсюда уходит в каталог наведения всей сети (правило 11).
+    # Порог на три порядка выше численного шума (тесты дают микрометры)
+    # и на четыре ниже всего, что имеет смысл.
+    residual_km = separation_km(seed, moved, target_mjd)
+    if residual_km > MAX_TRANSFER_RESIDUAL_KM:
+        raise ValueError(
+            f"перенос эпохи не сошёлся: положение разошлось на {residual_km * 1000:.1f} м"
+        )
+    return moved

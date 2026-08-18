@@ -1,3 +1,4 @@
+import datetime as dt
 from typing import Any
 from uuid import UUID
 
@@ -5,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.interfaces.repositories import FitRunRepository
-from domain.models import FitRun, TleLines
-from infrastructure.postgres.models.orbit import OdFitRunORM
+from domain.models import FitRun, Publication, TleLines
+from infrastructure.postgres.models.orbit import OdFitRunORM, OdSessionORM
 
 
 class SQLAlchemyFitRunRepository(FitRunRepository):
@@ -79,6 +80,49 @@ class SQLAlchemyFitRunRepository(FitRunRepository):
             )
         ).scalar_one_or_none()
         return _to_run(orm) if orm else None
+
+    async def mark_published(
+        self,
+        fit_run_id: UUID,
+        *,
+        mode: str,
+        published_tle_id: int | None,
+        tle: TleLines,
+    ) -> None:
+        orm = await self._session.get(OdFitRunORM, fit_run_id)
+        if orm is None:
+            return
+        # Колонка без зоны (миграция `8ad9a9fb2b40`), в отличие от `created_at`.
+        # Приведение живёт здесь и только здесь: наружу время уходит в UTC
+        # (правило 2), а наивная метка сравнилась бы с зоной машины.
+        orm.published_at = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+        orm.published_mode = mode
+        orm.published_tle_id = published_tle_id
+        orm.tle0, orm.tle1, orm.tle2 = tle.tle0, tle.tle1, tle.tle2
+
+    async def list_published(self, since: dt.datetime) -> list[Publication]:
+        rows = await self._session.execute(
+            select(OdFitRunORM, OdSessionORM)
+            .join(OdSessionORM, OdSessionORM.uuid == OdFitRunORM.session_uuid)
+            .where(OdFitRunORM.published_at.is_not(None))
+            .where(OdFitRunORM.published_at >= since.replace(tzinfo=None))
+            .order_by(OdFitRunORM.published_at.desc())
+        )
+        return [
+            Publication(
+                fit_run_uuid=run.uuid,
+                session_uuid=session.uuid,
+                session_name=session.name,
+                norad_id=session.norad_id,
+                published_at=run.published_at.replace(tzinfo=dt.UTC),
+                published_mode=run.published_mode,
+                published_tle_id=run.published_tle_id,
+                author_sub=run.author_sub,
+                rms_khz=run.rms_khz,
+                n_points=run.n_points,
+            )
+            for run, session in rows
+        ]
 
 
 def _to_run(orm: OdFitRunORM) -> FitRun:

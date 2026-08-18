@@ -5,10 +5,18 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Protocol
 from uuid import UUID
 
-from domain.models import FitRun, ObservationTrack, OdSession, SessionSummary, TleLines
+from domain.models import (
+    FitRun,
+    ObservationTrack,
+    OdSession,
+    Publication,
+    SessionSummary,
+    TleLines,
+)
 
 
 class SessionRepository(Protocol):
@@ -96,4 +104,24 @@ class FitRunRepository(Protocol):
     async def latest(self, session_uuid: UUID) -> FitRun | None:
         """Последний прогон **любого** статуса: у неуспешного тоже есть
         элементы и невязки, и молчать о нём хуже, чем показать со статусом."""
+        ...
+
+    async def mark_published(
+        self,
+        fit_run_id: UUID,
+        *,
+        mode: str,
+        published_tle_id: int | None,
+        tle: TleLines,
+    ) -> None:
+        """Отметка публикации или предложения.
+
+        Строки перезаписываются: при переносе эпохи в каталог уходит не то TLE,
+        что лежало в прогоне, и хранить надо опубликованное — иначе провенанс
+        указывает на строки, которых в каталоге нет.
+        """
+        ...
+
+    async def list_published(self, since: datetime) -> list[Publication]:
+        """Публикации и предложения свежее указанного момента, новые сверху."""
         ...

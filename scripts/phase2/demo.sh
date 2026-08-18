@@ -211,3 +211,63 @@ import json, sys
 for s in json.load(sys.stdin):
     print("   {}  {}  rms {}".format(s["uuid"][:8], s["status"], s["rms_khz"]))
 '
+
+# ---------------------------------------------------------------------------
+# Шаги 7-8 — фаза 5. Ни один из них не пишет в боевой каталог СОНИКС:
+# шаг 7 только считает, шаг 8 идёт режимом `propose`, который до Django
+# не доходит вовсе. Публикации из демонстрации нет и быть не может.
+
+FIT_RUN_ID=$(curl -fsS "${BASE}/sessions/${FIT_UUID}/fits" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["fit_run_id"])')
+
+echo
+echo "7. POST ${BASE}/fits/${FIT_RUN_ID}/reepoch  (замена sattools/propagate)"
+for BODY in '{"epoch": "latest_observation"}' '{"epoch_yyddd": "26005.391632037"}'; do
+    echo "   запрос ${BODY}"
+    curl -fsS -X POST "${BASE}/fits/${FIT_RUN_ID}/reepoch" \
+        -H 'Content-Type: application/json' -d "${BODY}" \
+        | python3 -c '
+import json, sys
+
+r = json.load(sys.stdin)
+lines = [r["tle"]["tle1"], r["tle"]["tle2"]]
+print("   эпоха", r["epoch"])
+for line in lines:
+    print("  ", line)
+    assert len(line) == 69, "длина {}, а Django валидирует ровно 69".format(len(line))
+    digits = sum(int(c) for c in line[:68] if c.isdigit()) + line[:68].count("-")
+    assert int(line[68]) == digits % 10, "контрольная сумма не сходится"
+print("   69 символов и контрольная сумма ✓")
+'
+done
+
+echo
+echo "8. POST ${BASE}/fits/{id}/publish  — порог качества (decisions/007)"
+
+# Порог здесь не только проверяется, но и **меряется на реальных данных**:
+# из четырёх условий три видны в ответе фита, а расхождение положения
+# с затравкой на эпохе до фазы 5 никто не считал.
+echo "   8a. предложение по хорошему прогону: порог пройден"
+curl -fsS -X POST "${BASE}/fits/${FIT_RUN_ID}/publish" \
+    -H 'Content-Type: application/json' \
+    -d '{"mode": "propose", "reepoch_to": {"epoch": "latest_observation"}}' \
+    | python3 -c '
+import json, sys
+
+p = json.load(sys.stdin)
+print("   режим {}, id в каталоге {}".format(p["mode"], p["published_tle_id"]))
+assert p["published_tle_id"] is None, "propose не должен ходить в Django"
+print("   в боевой каталог не ходили ✓")
+'
+
+echo
+echo "9. GET ${BASE}/publications  — админ-вид до первой боевой публикации"
+curl -fsS "${BASE}/publications?days=7" | python3 -c '
+import json, sys
+rows = json.load(sys.stdin)
+print("   записей за 7 дней:", len(rows))
+for r in rows[:5]:
+    print("   {}  {}  norad {}  RMS {:.4f}  {} точек  id {}".format(
+        r["published_at"], r["published_mode"], r["norad_id"],
+        r["rms_khz"], r["n_points"], r["published_tle_id"]))
+'

@@ -90,6 +90,27 @@ class FitRun:
 
 
 @dataclass(frozen=True)
+class Publication:
+    """Строка админ-вида «опубликованные за 7 дней» (decisions/007).
+
+    Джойн прогона и сессии: в каталоге СОНИКС публикация фита неотличима
+    от ручной строки, поэтому провенанс — какой спутник, какой прогон,
+    с каким RMS и кто — есть только здесь.
+    """
+
+    fit_run_uuid: UUID
+    session_uuid: UUID
+    session_name: str
+    norad_id: int | None
+    published_at: datetime
+    published_mode: str
+    published_tle_id: int | None
+    author_sub: str
+    rms_khz: float
+    n_points: int
+
+
+@dataclass(frozen=True)
 class OdSession:
     uuid: UUID
     name: str

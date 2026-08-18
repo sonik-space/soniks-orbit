@@ -303,6 +303,18 @@ def iso_from_mjd(mjd: float) -> dt.datetime:
     return dt.datetime.fromtimestamp((mjd - MJD_UNIX_EPOCH) * 86400.0, tz=dt.UTC)
 
 
+def mjd_from_iso(when: dt.datetime) -> float:
+    """Обратно к `iso_from_mjd`. Стоит рядом с ним, а не в новом модуле:
+    четвёртая копия `MJD_UNIX_EPOCH` в проекте разошлась бы с первыми тремя.
+
+    Метка без зоны считается UTC: во всём API время — UTC (правило 2),
+    а `timestamp()` у наивной метки взял бы зону машины.
+    """
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=dt.UTC)
+    return MJD_UNIX_EPOCH + when.timestamp() / 86400.0
+
+
 def dominated_names(result: FitResult) -> list[str]:
     """Имена api.md вместо имён ядра: `prior_dominated` едет прямо в UI."""
     core_to_api = {core: api for api, core in SIGMA_FIELDS}

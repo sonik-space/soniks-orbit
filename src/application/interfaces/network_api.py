@@ -11,6 +11,8 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any, Protocol
 
+from domain.models import TleLines
+
 
 class NetworkApi(Protocol):
     async def get_observation(self, observation_id: int) -> dict[str, Any]:
@@ -30,4 +32,21 @@ class NetworkApi(Protocol):
 
     async def get_transmitter(self, uuid: str) -> dict[str, Any] | None:
         """Запись передатчика по uuid: нужны `baud` и `downlink_low`."""
+        ...
+
+    async def publish_tle(
+        self, *, norad_id: int, lines: TleLines, url: str, access_token: str
+    ) -> int:
+        """Запись TLE в каталог сети. Возвращает идентификатор записи.
+
+        Публикация идёт **от имени человека**, а не сервиса: права проверяет
+        сеть, своей модели прав сервис не держит (integration.md). Отсюда
+        `access_token` — тот же токен, с которым пришёл запрос.
+
+        `url` — ссылка на прогон фита. В каталоге источник записи неотличим
+        от ручной, и эта ссылка — единственный провенанс на той стороне.
+
+        Отказ по правам поднимает `ForbiddenError`: вызывающий превращает его
+        в предложение (decisions/007).
+        """
         ...

@@ -65,6 +65,18 @@ class CurrentUser:
             raise AuthorizationError()
         return str(sub)
 
+    @property
+    def token(self) -> str:
+        """Тот же токен для похода в сеть СОНИКС.
+
+        Публикация идёт от имени человека: права на неё проверяет СОНИКС,
+        а не сервис (integration.md). Токен возвращается **проверенным** —
+        иначе наружу ушла бы строка, которую мы сами не читали.
+        """
+        token = self._extract()
+        self._verify(token)
+        return token
+
     def _extract(self) -> str:
         header = self._request.headers.get("authorization", "")
         if not header.startswith("Bearer "):
@@ -108,3 +120,7 @@ class MockCurrentUser(CurrentUser):
     @property
     def sub(self) -> str:
         return self.MOCK_SUB
+
+    @property
+    def token(self) -> str:
+        return ""
