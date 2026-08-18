@@ -4,7 +4,8 @@
  *
  * Пишет JSON с тем, что нужно лестнице тестов из testing.md §1:
  * лучевую скорость на каждой точке при затравке (ступень 1), несущую
- * и RMS до фита (ступень 2), элементы, несущую и RMS после фита (ступень 3).
+ * и RMS до фита (ступень 2), элементы, несущую и RMS после фита (ступень 3),
+ * азимут, высоту и момент наибольшего сближения (ступень 5).
  *
  * Маска — семь символов 0/1 в порядке параметров rffit
  * (incl, RAAN, ecc, argp, M, rev/day, B*): какие параметры свободны.
@@ -100,9 +101,11 @@ static void print_elements(FILE *fp, const char *key, orbit_t o)
 
 int main(int argc, char *argv[])
 {
-  int i, satno, imode;
+  int i, j, k, ntca, satno, imode;
   int ia[7];
-  double a[7], *vseed, azi, alt;
+  double a[7], *vseed, *aziseed, *altseed, *tca, azi, alt;
+  double mjd, v, vtca, mjdtca, gmin, gmax;
+  int *tca_site;
   double rms_pre, ffit_pre, rms_post;
   orbit_t seed;
   tle_array_t *tle_array;
@@ -153,10 +156,60 @@ int main(int argc, char *argv[])
   }
   seed = orb;
 
-  /* Ступень 1: лучевая скорость на каждой точке при затравке. */
+  /* Ступень 1: лучевая скорость на каждой точке при затравке.
+   * Азимут и высоту velocity() считает той же прогонкой (ступень 5). */
   vseed = (double *) malloc(sizeof(double) * d.n);
+  aziseed = (double *) malloc(sizeof(double) * d.n);
+  altseed = (double *) malloc(sizeof(double) * d.n);
   for (i = 0; i < d.n; i++)
-    velocity(seed, d.p[i].mjd, d.p[i].s, &vseed[i], &azi, &alt);
+    velocity(seed, d.p[i].mjd, d.p[i].s, &vseed[i], &aziseed[i], &altseed[i]);
+
+  /* Ступень 5: момент наибольшего сближения. Сетка и условие — из цикла
+   * отрисовки rffit.c:496-506: 1024 отсчёта по интервалу данных, расширенному
+   * на 10% в обе стороны, смена знака лучевой скорости над горизонтом,
+   * последняя из найденных.
+   *
+   * Считается ЗДЕСЬ, а не при выводе, хотя выводится вместе с ним. velocity()
+   * принимает orbit_t, но не использует его: положение спутника даёт
+   * satpos_xyz из ГЛОБАЛЬНОГО состояния, инициализированного init_sgdp4.
+   * После fit_curve это состояние — уже подогнанные элементы, и тот же цикл
+   * ниже по тексту молча посчитал бы TCA не по той орбите, что столбцы
+   * azi/alt рядом. Расхождение видно: на site 43 оно составило 94 минуты.
+   *
+   * Отличий от rffit два, оба намеренные.
+   *
+   * Первое: rffit считает TCA для ОДНОЙ станции (та, что в ST_COSPAR), потому
+   * что рисует одну панель неба. Здесь — на каждую станцию набора: их до пяти,
+   * и низкий проход, где кривая пересекает нуль полого, — самый неудобный
+   * случай для сравнения интерполяции с «ближайшим из 1024».
+   *
+   * Второе: сетка идёт в double, а у rffit xmin/xmax — float (наследство осей
+   * PGPLOT). Разница по времени ~3 мс при шаге сетки ~26 с, то есть на четыре
+   * порядка ниже допуска теста, зато сетка воспроизводима по границам, которые
+   * печатаются рядом. Без них «один шаг отсчёта» в тесте — число из воздуха. */
+  gmin = d.mjdmin - 0.1 * d.dmjd;
+  gmax = d.mjdmax + 0.1 * d.dmjd;
+  tca_site = (int *) malloc(sizeof(int) * d.n);
+  tca = (double *) malloc(sizeof(double) * d.n);
+  for (i = 0, ntca = 0; i < d.n; i++) {
+    for (j = 0; j < i; j++)
+      if (d.p[j].site_id == d.p[i].site_id)
+        break;
+    if (j < i)
+      continue;
+
+    mjdtca = -1.0;
+    vtca = 0.0;
+    for (k = 0; k < NMAX; k++) {
+      mjd = gmin + (gmax - gmin) * (double) k / (double) (NMAX - 1);
+      velocity(seed, mjd, d.p[i].s, &v, &azi, &alt);
+      if (k > 0 && vtca * v < 0.0 && alt > 0.0 && mjd < d.mjdmax && mjd > d.mjdmin)
+        mjdtca = mjd;
+      vtca = v;
+    }
+    tca_site[ntca] = d.p[i].site_id;
+    tca[ntca++] = mjdtca;
+  }
 
   /* Ступень 2: несущая и RMS до фита. chisq пишет d.ffit и глобальную orb,
    * compute_rms читает их же. */
@@ -186,10 +239,25 @@ int main(int argc, char *argv[])
   for (i = 0; i < d.n; i++) {
     fprintf(out,
             "  {\"mjd\":%.12f,\"freq_khz\":%.9f,\"flux\":%.6f,\"site_id\":%d,"
-            "\"lat_deg\":%.6f,\"lng_deg\":%.6f,\"alt_km\":%.6f,\"v_km_s\":%.15e}%s\n",
+            "\"lat_deg\":%.6f,\"lng_deg\":%.6f,\"alt_km\":%.6f,\"v_km_s\":%.15e,"
+            "\"azi_deg\":%.12f,\"alt_deg\":%.12f}%s\n",
             d.p[i].mjd, d.p[i].freq, d.p[i].flux, d.p[i].site_id,
             d.p[i].s.lat, d.p[i].s.lng, (double) d.p[i].s.alt, vseed[i],
+            aziseed[i], altseed[i],
             (i == d.n - 1) ? "" : ",");
+  }
+  fprintf(out, " ],\n");
+
+  fprintf(out, " \"grid\":{\"mjd_min\":%.12f,\"mjd_max\":%.12f,\"n\":%d},\n",
+          gmin, gmax, NMAX);
+  fprintf(out, " \"tca\":[\n");
+  for (i = 0; i < ntca; i++) {
+    fprintf(out, "  {\"site_id\":%d,", tca_site[i]);
+    if (tca[i] < 0.0)
+      fprintf(out, "\"mjd\":null}");
+    else
+      fprintf(out, "\"mjd\":%.12f}", tca[i]);
+    fprintf(out, "%s\n", (i == ntca - 1) ? "" : ",");
   }
   fprintf(out, " ],\n");
   fprintf(out, " \"pre\":{\"ffit_khz\":%.12f,\"rms_khz\":%.12f},\n", ffit_pre, rms_pre);
@@ -199,6 +267,10 @@ int main(int argc, char *argv[])
   fclose(out);
 
   free(vseed);
+  free(aziseed);
+  free(altseed);
+  free(tca_site);
+  free(tca);
   free_tles(tle_array);
   return 0;
 }

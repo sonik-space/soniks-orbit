@@ -182,14 +182,24 @@ class ExtractionStatusResponse(BaseModel):
 
 
 class ModelCurveResponse(BaseModel):
-    """Модельная кривая последнего фита на равномерной сетке времени.
+    """Модельная кривая фита на равномерной сетке времени.
 
     Заменяет `ikhnosoniks`: кривая идёт через весь проход, в том числе там,
     где точек нет. Считает её сервер — фронт доплер не снимает (правило 9).
+
+    `az_deg`/`alt_deg` — та же сетка в горизонтальных координатах, панель
+    неба рисуется прямо по ним. `t_ca` — момент наибольшего сближения,
+    `t_epoch` — эпоха элементов: вертикальные метки `T_CA` и `T_EP` из `rffit`.
     """
 
     mjd: list[float]
     f_offset_hz: list[float]
+    az_deg: list[float]
+    alt_deg: list[float]
+    # `null`, если на этой сетке спутник над горизонтом знак скорости не меняет:
+    # наблюдение целиком до или целиком после сближения.
+    t_ca: datetime | None
+    t_epoch: datetime
 
 
 class TrackResponse(BaseModel):

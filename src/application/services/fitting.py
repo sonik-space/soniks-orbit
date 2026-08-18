@@ -31,8 +31,8 @@ from core.configs.fit import FitSettings
 from domain.models import FitRun, ObservationTrack, TleLines
 from domain.od.doppler import fac as doppler_fac
 from domain.od.elements import Elements
-from domain.od.fit import PARAM_NAMES, FitResult, Segment
-from domain.od.geometry import range_rate
+from domain.od.fit import PARAM_NAMES, FitResult, Segment, profile_carrier
+from domain.od.geometry import range_rate, tca_mjd, topocentric
 from domain.od.tle import to_lines
 
 MJD_UNIX_EPOCH = 40587.0
@@ -193,11 +193,15 @@ def model_curve(
     calibration: dict,
     n_points: int,
 ) -> ModelCurveResponse | None:
-    """Модельная кривая на равномерной сетке времени водопада.
+    """Модельная кривая, панель неба и метки времени на одной сетке.
 
     Заменяет `ikhnosoniks`: кривая идёт через весь проход, в том числе там,
     где точек нет. Считается на сервере одной векторной прогонкой SGP4 —
     фронт доплер не снимает и абсолютную частоту не вычисляет (правило 9).
+
+    Азимут, высота и `t_ca` приходят из **той же** прогонки: сетка водопада
+    и есть сетка панели неба, поэтому соседней `sky_track()` здесь нет
+    и второго прохода SGP4 тоже.
 
     Сетка берётся из калибровки, а не из точек: у наблюдения без трека
     её всё равно надо чем-то нарисовать.
@@ -206,7 +210,7 @@ def model_curve(
     t1 = t0 + (calibration["plot_h"] - 1) * calibration["sec_per_px"] / 86400.0
     mjd = np.linspace(t0, t1, n_points)
 
-    v_km_s, err = range_rate(
+    v_km_s, az_deg, alt_deg, err = topocentric(
         elements.to_satrec(),
         mjd,
         calibration["station_lat"],
@@ -219,7 +223,52 @@ def model_curve(
     f_abs_hz = doppler_fac(v_km_s) * carrier_khz * 1000.0
     # Обратно к оси водопада той же формулой ядра: f_abs = f_центра − f_смещение.
     f_offset_hz = calibration["center_freq_hz"] - f_abs_hz
-    return ModelCurveResponse(mjd=mjd.tolist(), f_offset_hz=f_offset_hz.tolist())
+    t_ca = tca_mjd(mjd, v_km_s, alt_deg)
+    return ModelCurveResponse(
+        mjd=mjd.tolist(),
+        f_offset_hz=f_offset_hz.tolist(),
+        az_deg=az_deg.tolist(),
+        alt_deg=alt_deg.tolist(),
+        t_ca=None if t_ca is None else iso_from_mjd(t_ca),
+        # Эпоха элементов — линия `T_EP` из `rffit`. Идёт рядом с кривой,
+        # а не берётся фронтом из ответа сессии: там она относится к последнему
+        # прогону, а кривая может быть от любого (`?fit=`).
+        t_epoch=iso_from_mjd(elements.epoch_mjd),
+    )
+
+
+def carrier_khz_for(run: FitRun, track: ObservationTrack) -> float | None:
+    """Несущая для наложения кривой прогона на это наблюдение, кГц.
+
+    Шаг 5 гайда — проверка TLE по наблюдению, которого в фите **не было**, —
+    существует именно потому, что такое наложение и есть проверка. Раньше
+    здесь возвращался `None`, и шаг был невыполним.
+
+    Три ступени, от точного к грубому:
+
+    1. наблюдение участвовало в прогоне — его несущая уже решена;
+    2. не участвовало, но точки есть — та же замкнутая форма (decisions/003)
+       по его собственным точкам и элементам прогона;
+    3. точек нет вовсе — частота наблюдения из снимка. Кривая по ней встанет
+       с постоянным сдвигом, но форма доплеровской ступеньки — то, ради чего
+       её и смотрят, — верна.
+    """
+    for block in run.per_observation:
+        if block["observation_id"] == track.observation_id:
+            return block["carrier_hz"] / 1000.0
+
+    elements = Elements.from_tle(run.tle.tle1, run.tle.tle2)
+    segments, _ = build_segments([track])
+    if segments:
+        seg = segments[0]
+        v_km_s, err = range_rate(
+            elements.to_satrec(), seg.mjd, seg.lat_deg, seg.lng_deg, seg.alt_km
+        )
+        if not np.any(err != 0):
+            return profile_carrier(doppler_fac(v_km_s), seg.f_khz, seg.weight)
+
+    frequency_hz = track.meta.get("observation_frequency")
+    return None if frequency_hz is None else float(frequency_hz) / 1000.0
 
 
 def calibration_schema(raw: dict | None) -> CalibrationResponse | None:

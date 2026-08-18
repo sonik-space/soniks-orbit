@@ -25,11 +25,16 @@ async def get_track(
     observation_id: int,
     query: FromDishka[GetTrackQuery],
     _user: FromDishka[CurrentUser],
+    fit: UUID | None = None,
 ) -> TrackResponse:
-    """Калибровка, точки и состояние извлечения.
+    """Калибровка, точки, состояние извлечения и модельная кривая.
 
     Пустой набор точек при `status: ok` — **нормальное** состояние, а не
     ошибка (decisions/001): UI показывает его спокойно и с заметной кнопкой
     ручной разметки, иначе гибридная автоматизация не работает.
+
+    `?fit=` накладывает любой прогон сессии, а не только последний: шаг 5
+    гайда — это проверка конкретного TLE по наблюдению, которого в том фите
+    могло и не быть.
     """
-    return await query(session_uuid, observation_id)
+    return await query(session_uuid, observation_id, fit)

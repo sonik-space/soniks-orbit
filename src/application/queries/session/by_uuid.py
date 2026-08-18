@@ -15,6 +15,7 @@ from application.dtos.session import (
 from application.interfaces.repositories import FitRunRepository, SessionRepository
 from application.services.fitting import (
     calibration_schema,
+    carrier_khz_for,
     curve_inputs,
     latest_fit_response,
     model_curve,
@@ -60,7 +61,12 @@ class GetTrackQuery:
         self._fit_repo = fit_repo
         self._settings = settings
 
-    async def __call__(self, session_uuid: UUID, observation_id: int) -> TrackResponse:
+    async def __call__(
+        self,
+        session_uuid: UUID,
+        observation_id: int,
+        fit_uuid: UUID | None = None,
+    ) -> TrackResponse:
         track = await self._repo.get_observation(session_uuid, observation_id)
         if track is None:
             raise NotFoundError(
@@ -74,38 +80,42 @@ class GetTrackQuery:
             extraction=ExtractionStatusResponse(
                 status=track.extraction_status, error=track.extraction_error
             ),
-            model=await self._model(session_uuid, track),
+            model=await self._model(session_uuid, track, fit_uuid),
         )
 
-    async def _model(self, session_uuid: UUID, track: ObservationTrack):
-        """Модельная кривая последнего прогона поверх этого водопада.
+    async def _model(
+        self, session_uuid: UUID, track: ObservationTrack, fit_uuid: UUID | None
+    ):
+        """Модельная кривая прогона поверх этого водопада.
 
         Считается на чтение, а не хранится: элементы и несущая уже лежат
         в прогоне, а сетка — это одна векторная прогонка SGP4, микросекунды.
         Так кривая не может разойтись с `elements_out`.
+
+        Прогон — последний либо названный явно (`?fit=`): шаг 5 гайда сверяет
+        наблюдение с конкретным опубликованным TLE, а не с тем, что оказалось
+        последним к моменту запроса.
         """
         calibration = curve_inputs(track)
         if calibration is None:
             return None
 
-        run = await self._fit_repo.latest(session_uuid)
+        if fit_uuid is None:
+            run = await self._fit_repo.latest(session_uuid)
+        else:
+            run = await self._fit_repo.get(fit_uuid)
+            if run is None or run.session_uuid != session_uuid:
+                raise NotFoundError(f"прогона {fit_uuid} нет в сессии {session_uuid}")
         if run is None:
             return None
 
-        carrier_hz = next(
-            (
-                block["carrier_hz"]
-                for block in run.per_observation
-                if block["observation_id"] == track.observation_id
-            ),
-            None,
-        )
-        if carrier_hz is None:
+        carrier_khz = carrier_khz_for(run, track)
+        if carrier_khz is None:
             return None
 
         return model_curve(
             Elements.from_tle(run.tle.tle1, run.tle.tle2),
-            carrier_hz / 1000.0,
+            carrier_khz,
             calibration,
             self._settings.MODEL_CURVE_POINTS,
         )

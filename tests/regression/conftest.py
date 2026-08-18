@@ -34,6 +34,8 @@ def load_golden(name: str) -> dict:
         ("lat_deg", "lat_deg"),
         ("lng_deg", "lng_deg"),
         ("alt_km", "alt_km"),
+        ("az_deg", "azi_deg"),
+        ("el_deg", "alt_deg"),
     ):
         g[key] = np.array([p[src] for p in pts])
     return g
