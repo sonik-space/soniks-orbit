@@ -23,6 +23,7 @@ import pytest
 
 from application.services.calibration import calibrate_observation, measure_points
 from application.services.identification import (
+    MAX_CANDIDATE_RMS_KHZ,
     MIN_CANDIDATE_MARGIN,
     is_screenable,
     launch_of,
@@ -231,6 +232,50 @@ def test_a_marked_track_is_screenable_even_without_convention_margin() -> None:
 
     assert reference.diagnostics["margin"] == pytest.approx(1.0, abs=0.01)
     assert is_screenable(reference)
+
+
+def test_hopeless_candidates_are_cut_by_the_absolute_limit(reference, objects) -> None:
+    """Отрыв — величина относительная, и один он не отличает ответ от промаха.
+
+    Без абсолютного предела в списке остаются объекты с RMS в единицы кГц,
+    и отрыв начинает измерять расстояние между двумя промахами. Это дыра,
+    которой у `rffit` нет: клавиша `i` первым делом спрашивает предел в кГц.
+    """
+    candidates = screen_track(reference, objects)
+
+    assert candidates, "отсечка не должна опустошать заведомо годный трек"
+    assert all(c.rms_khz <= MAX_CANDIDATE_RMS_KHZ for c in candidates)
+
+
+def test_no_match_is_an_answer_not_an_empty_screening() -> None:
+    """Трек, к которому не подходит никто, возвращает пустой список.
+
+    Это ответ «такого объекта в каталоге нет» (упражнение 6 гайда), а не
+    отказ перебора: до отсечки тот же трек вернул бы уверенный список мусора.
+
+    Портится **форма**, а не уровень: постоянный сдвиг частоты поглощается
+    профилированной несущей без следа (decisions/003), и трек, сдвинутый хоть
+    на 40 кГц, подойдёт ровно тем же кандидатам. Знакопеременная пила ±5 кГц
+    не ложится ни на одну доплеровскую кривую — она непрерывна.
+    """
+    reference = track_of(REFERENCE_ID)
+    points = dict(reference.points)
+    points["f_abs_hz"] = [
+        f + (5_000.0 if i % 2 else -5_000.0)
+        for i, f in enumerate(points["f_abs_hz"])
+    ]
+    nonsense = ObservationTrack(
+        uuid=reference.uuid,
+        observation_id=reference.observation_id,
+        meta=reference.meta,
+        extraction_status="ok",
+        calibration=reference.calibration,
+        points=points,
+        diagnostics=reference.diagnostics,
+    )
+
+    assert is_screenable(nonsense)
+    assert screen_track(nonsense, catalog()) == []
 
 
 def test_single_candidate_has_no_margin() -> None:

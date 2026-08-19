@@ -25,7 +25,7 @@ async def get_track(
     observation_id: int,
     query: FromDishka[GetTrackQuery],
     _user: FromDishka[CurrentUser],
-    fit: UUID | None = None,
+    fit: str | None = None,
 ) -> TrackResponse:
     """Калибровка, точки, состояние извлечения и модельная кривая.
 
@@ -36,5 +36,14 @@ async def get_track(
     `?fit=` накладывает любой прогон сессии, а не только последний: шаг 5
     гайда — это проверка конкретного TLE по наблюдению, которого в том фите
     могло и не быть.
+
+    `?fit=seed` — кривая затравки, до всякого фита. Без неё первому прогону
+    не с чем сравниться, а «было / стало» читается только числом RMS.
+
+    Тип параметра — `str`, а не `UUID | Literal["seed"]`, хотя значений ровно
+    два вида. Причина внешняя: `openapi-generator` разворачивает такой `anyOf`
+    в пустой интерфейс и ломает `typecheck` фронта. Разбор строки делает
+    `GetTrackQuery`, ошибочное значение — `404`, а не молчаливый последний
+    прогон.
     """
     return await query(session_uuid, observation_id, fit)

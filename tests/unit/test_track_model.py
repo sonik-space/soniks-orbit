@@ -21,10 +21,10 @@ import numpy as np
 import pytest
 
 from application.queries.session.by_uuid import GetTrackQuery
-from application.services.fitting import carrier_khz_for, elements_to_dict
+from application.services.fitting import carrier_khz_for, elements_to_dict, to_tle
 from core.configs.fit import FitSettings
 from domain.exceptions import NotFoundError
-from domain.models import FitRun, ObservationTrack, TleLines
+from domain.models import FitRun, ObservationTrack, OdSession, TleLines
 from domain.od.doppler import fac as doppler_fac
 from domain.od.elements import Elements
 from domain.od.geometry import range_rate
@@ -134,6 +134,22 @@ class FakeSessionRepo:
     async def get_observation(self, _session_uuid: UUID, observation_id: int):
         return self._tracks.get(observation_id)
 
+    async def get(self, session_uuid: UUID) -> OdSession:
+        """Затравка — TLE первого наблюдения: `?fit=seed` обязан взять её,
+        а не элементы прогона."""
+        first = next(iter(self._tracks.values()))
+        tle = first.meta["tle"]
+        return OdSession(
+            uuid=session_uuid,
+            name="фикстура",
+            norad_id=64880,
+            owner_sub="sub",
+            seed=TleLines(tle0=tle["tle0"], tle1=tle["tle1"], tle2=tle["tle2"]),
+            seed_source="catalog",
+            status="draft",
+            observations=list(self._tracks.values()),
+        )
+
 
 class FakeFitRepo:
     def __init__(self, *runs: FitRun) -> None:
@@ -147,9 +163,9 @@ class FakeFitRepo:
         return self._runs.get(fit_run_id)
 
 
-def _ask(tracks, runs, observation_id: int, fit_uuid: UUID | None = None):
+def _ask(tracks, runs, observation_id: int, fit=None):
     query = GetTrackQuery(FakeSessionRepo(*tracks), FakeFitRepo(*runs), FitSettings())
-    return asyncio.run(query(uuid4(), observation_id, fit_uuid))
+    return asyncio.run(query(uuid4(), observation_id, fit))
 
 
 def test_carrier_is_profiled_from_the_observations_own_points() -> None:
@@ -209,6 +225,45 @@ def test_named_fit_from_another_session_is_not_overlaid() -> None:
 
     with pytest.raises(NotFoundError):
         _ask(tracks, (foreign,), UNSEEN, uuid4())
+
+
+def test_seed_curve_exists_before_any_fit() -> None:
+    """`?fit=seed` — база сравнения первому прогону.
+
+    Прогонов нет вовсе, и без этой ветки `_model` вернул бы `None`: сравнивать
+    первый фит было бы не с чем, а «было / стало» читалось бы только числом.
+    """
+    tracks = (_track(UNSEEN),)
+
+    assert _ask(tracks, (), UNSEEN).model is None, "без прогонов кривой быть не должно"
+
+    response = _ask(tracks, (), UNSEEN, "seed")
+    assert response.model is not None
+    assert len(response.model.mjd) == FitSettings().MODEL_CURVE_POINTS
+    assert response.model.t_ca is not None
+
+
+def test_seed_curve_ignores_the_latest_run() -> None:
+    """Затравка — это затравка, а не последний прогон.
+
+    Элементы прогона сдвинуты по средней аномалии; кривая затравки обязана
+    остаться на несдвинутых, иначе сравнивать прогон было бы с самим собой.
+    """
+    tracks = (_track(UNSEEN),)
+    session_uuid = uuid4()
+    run = _run(session_uuid, UNSEEN)
+    moved = Elements.from_tle(run.tle.tle1, run.tle.tle2)
+    moved = moved.with_vector(moved.to_vector() + np.array([0, 0, 0, 0, 2.0, 0, 0]))
+    shifted = FitRun(**{**run.__dict__, "tle": to_tle(moved, run.tle)})
+
+    seed_curve = _ask(tracks, (shifted,), UNSEEN, "seed").model
+    fit_curve = _ask(tracks, (shifted,), UNSEEN).model
+
+    assert seed_curve is not None and fit_curve is not None
+    difference = max(
+        abs(a - b) for a, b in zip(seed_curve.f_offset_hz, fit_curve.f_offset_hz)
+    )
+    assert difference > 100.0, "кривая затравки совпала с кривой прогона"
 
 
 if __name__ == "__main__":

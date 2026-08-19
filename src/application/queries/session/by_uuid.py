@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID
 
 from application.dtos.common import TleSchema
@@ -16,6 +17,7 @@ from application.interfaces.repositories import FitRunRepository, SessionReposit
 from application.services.fitting import (
     calibration_schema,
     carrier_khz_for,
+    carrier_khz_of,
     curve_inputs,
     latest_fit_response,
     model_curve,
@@ -65,7 +67,7 @@ class GetTrackQuery:
         self,
         session_uuid: UUID,
         observation_id: int,
-        fit_uuid: UUID | None = None,
+        fit: str | UUID | Literal["seed"] | None = None,
     ) -> TrackResponse:
         track = await self._repo.get_observation(session_uuid, observation_id)
         if track is None:
@@ -80,13 +82,16 @@ class GetTrackQuery:
             extraction=ExtractionStatusResponse(
                 status=track.extraction_status, error=track.extraction_error
             ),
-            model=await self._model(session_uuid, track, fit_uuid),
+            model=await self._model(session_uuid, track, fit),
         )
 
     async def _model(
-        self, session_uuid: UUID, track: ObservationTrack, fit_uuid: UUID | None
+        self,
+        session_uuid: UUID,
+        track: ObservationTrack,
+        fit: str | UUID | Literal["seed"] | None,
     ):
-        """Модельная кривая прогона поверх этого водопада.
+        """Модельная кривая поверх этого водопада.
 
         Считается на чтение, а не хранится: элементы и несущая уже лежат
         в прогоне, а сетка — это одна векторная прогонка SGP4, микросекунды.
@@ -95,26 +100,47 @@ class GetTrackQuery:
         Прогон — последний либо названный явно (`?fit=`): шаг 5 гайда сверяет
         наблюдение с конкретным опубликованным TLE, а не с тем, что оказалось
         последним к моменту запроса.
+
+        `?fit=seed` — кривая **затравки**, до всякого фита. Нужна как база
+        сравнения первому прогону (сравнивать его иначе не с чем) и чтобы
+        «было до / стало после» читалось глазами, а не только числом RMS.
         """
         calibration = curve_inputs(track)
         if calibration is None:
             return None
 
-        if fit_uuid is None:
-            run = await self._fit_repo.latest(session_uuid)
+        if fit == "seed":
+            session = await self._repo.get(session_uuid)
+            if session is None:
+                raise NotFoundError(f"сессия {session_uuid} не найдена")
+            elements = Elements.from_tle(session.seed.tle1, session.seed.tle2)
+            carrier_khz = carrier_khz_of(elements, track)
         else:
-            run = await self._fit_repo.get(fit_uuid)
-            if run is None or run.session_uuid != session_uuid:
-                raise NotFoundError(f"прогона {fit_uuid} нет в сессии {session_uuid}")
-        if run is None:
-            return None
+            if fit is None:
+                run = await self._fit_repo.latest(session_uuid)
+            else:
+                # Строка приходит из запроса как есть: типизировать параметр
+                # объединением `UUID | Literal` нельзя, `openapi-generator`
+                # разворачивает такой `anyOf` в пустой интерфейс.
+                try:
+                    fit_uuid = fit if isinstance(fit, UUID) else UUID(fit)
+                except ValueError:
+                    raise NotFoundError(
+                        f"прогона {fit} нет в сессии {session_uuid}"
+                    ) from None
+                run = await self._fit_repo.get(fit_uuid)
+                if run is None or run.session_uuid != session_uuid:
+                    raise NotFoundError(f"прогона {fit} нет в сессии {session_uuid}")
+            if run is None:
+                return None
+            elements = Elements.from_tle(run.tle.tle1, run.tle.tle2)
+            carrier_khz = carrier_khz_for(run, track)
 
-        carrier_khz = carrier_khz_for(run, track)
         if carrier_khz is None:
             return None
 
         return model_curve(
-            Elements.from_tle(run.tle.tle1, run.tle.tle2),
+            elements,
             carrier_khz,
             calibration,
             self._settings.MODEL_CURVE_POINTS,

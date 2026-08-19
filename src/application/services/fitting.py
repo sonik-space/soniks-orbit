@@ -237,27 +237,20 @@ def model_curve(
     )
 
 
-def carrier_khz_for(run: FitRun, track: ObservationTrack) -> float | None:
-    """Несущая для наложения кривой прогона на это наблюдение, кГц.
+def carrier_khz_of(elements: Elements, track: ObservationTrack) -> float | None:
+    """Несущая для наложения произвольных элементов на это наблюдение, кГц.
 
-    Шаг 5 гайда — проверка TLE по наблюдению, которого в фите **не было**, —
-    существует именно потому, что такое наложение и есть проверка. Раньше
-    здесь возвращался `None`, и шаг был невыполним.
+    Две ступени, от точного к грубому:
 
-    Три ступени, от точного к грубому:
-
-    1. наблюдение участвовало в прогоне — его несущая уже решена;
-    2. не участвовало, но точки есть — та же замкнутая форма (decisions/003)
-       по его собственным точкам и элементам прогона;
-    3. точек нет вовсе — частота наблюдения из снимка. Кривая по ней встанет
+    1. точки есть — замкнутая форма (decisions/003) по ним и этим элементам;
+    2. точек нет вовсе — частота наблюдения из снимка. Кривая по ней встанет
        с постоянным сдвигом, но форма доплеровской ступеньки — то, ради чего
        её и смотрят, — верна.
-    """
-    for block in run.per_observation:
-        if block["observation_id"] == track.observation_id:
-            return block["carrier_hz"] / 1000.0
 
-    elements = Elements.from_tle(run.tle.tle1, run.tle.tle2)
+    Зовут её и прогон фита, и затравка сессии (`?fit=seed`): профилирование
+    несущей существует в одной реализации — `domain/od/fit.py::profile_carrier`
+    (правила 8 и 9).
+    """
     segments, _ = build_segments([track])
     if segments:
         seg = segments[0]
@@ -269,6 +262,23 @@ def carrier_khz_for(run: FitRun, track: ObservationTrack) -> float | None:
 
     frequency_hz = track.meta.get("observation_frequency")
     return None if frequency_hz is None else float(frequency_hz) / 1000.0
+
+
+def carrier_khz_for(run: FitRun, track: ObservationTrack) -> float | None:
+    """Несущая для наложения кривой прогона на это наблюдение, кГц.
+
+    Шаг 5 гайда — проверка TLE по наблюдению, которого в фите **не было**, —
+    существует именно потому, что такое наложение и есть проверка. Раньше
+    здесь возвращался `None`, и шаг был невыполним.
+
+    Первая ступень своя: наблюдение участвовало в прогоне, и его несущая уже
+    решена. Остальные две общие с затравкой — в `carrier_khz_of`.
+    """
+    for block in run.per_observation:
+        if block["observation_id"] == track.observation_id:
+            return block["carrier_hz"] / 1000.0
+
+    return carrier_khz_of(Elements.from_tle(run.tle.tle1, run.tle.tle2), track)
 
 
 def calibration_schema(raw: dict | None) -> CalibrationResponse | None:

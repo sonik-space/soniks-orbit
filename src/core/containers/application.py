@@ -24,6 +24,7 @@ from application.queries.identification.track import GetIdentificationTrackQuery
 from application.queries.publication.list import ListPublicationsQuery
 from application.queries.session.by_uuid import GetSessionQuery, GetTrackQuery
 from application.queries.session.list import ListSessionsQuery
+from application.queries.session.neighbours import GetNeighbourCurvesQuery
 
 
 def application_provider() -> Provider:
@@ -37,6 +38,7 @@ def application_provider() -> Provider:
         UpdateTrackInteractor,
         GetSessionQuery,
         GetTrackQuery,
+        GetNeighbourCurvesQuery,
         ListSessionsQuery,
         RunFitInteractor,
         ReepochInteractor,

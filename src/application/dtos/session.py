@@ -202,6 +202,37 @@ class ModelCurveResponse(BaseModel):
     t_epoch: datetime
 
 
+class NeighbourCurveResponse(BaseModel):
+    """Доплеровская кривая соседа по запуску поверх этого же водопада.
+
+    Упражнение 2 гайда, клавиша `p` в `rfplot`: наложение кривых каталога —
+    главный ориентир для того, кто размечает. Оно отвечает на два вопроса
+    разом — какая линия чья и какая из них вообще не наша.
+
+    Кривая **сырая**: станция этот объект не ведёт, поэтому его след
+    на водопаде и выглядит широкой S-кривой (algorithms.md §2). Несущая
+    берётся как частота наблюдения — своей у соседа мы не знаем, а форма
+    ступеньки от неё почти не зависит.
+
+    Панели неба и меток времени здесь нет: сосед — это контекст, а не
+    предмет измерения.
+    """
+
+    norad_id: int
+    name: str
+    mjd: list[float]
+    f_offset_hz: list[float]
+
+
+class NeighboursResponse(BaseModel):
+    """Пустой список — запуск неизвестен либо в каталоге нет его объектов.
+    Это штатное состояние, а не ошибка: обозначение запуска берётся
+    из строки TLE наблюдения, и у наблюдения без TLE его нет."""
+
+    launch: str
+    curves: list[NeighbourCurveResponse]
+
+
 class TrackResponse(BaseModel):
     calibration: CalibrationResponse | None
     waterfall_url: str | None
