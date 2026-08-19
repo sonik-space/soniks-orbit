@@ -19,11 +19,11 @@ lint:
 test:
 	uv run pytest $(opts)
 
-# Два числа, которые нельзя ухудшать. Гоняются после каждой правки,
-# а не только перед коммитом (roadmap.md, фазы 0 и 1).
+# Барьер после автоизвлечения — калибровка: рамка осей и деления времени.
+# Они детектируются по картинке, ломаются от правок вёрстки в клиенте
+# и способны молча испортить уже поставленные человеком точки (decisions/015).
 gate: test
-	uv run python scripts/phase0/end_to_end.py 1527888
-	uv run python scripts/phase1/sweep.py
+	uv run pytest tests/golden -q
 
 up:
 	docker compose -f $(LOCAL_COMPOSE_FILE) up -d

@@ -25,7 +25,6 @@ from presentation.api.v1.routers.session.by_uuid import session_by_uuid_router
 from presentation.api.v1.routers.session.create import create_session_router
 from presentation.api.v1.routers.session.list import list_sessions_router
 from presentation.api.v1.routers.session.manage import manage_session_router
-from presentation.api.v1.routers.session.reextract import reextract_router
 from presentation.api.v1.routers.session.track import track_router
 from presentation.api.v1.routers.session.update_seed import update_seed_router
 from presentation.api.v1.routers.session.update_track import update_track_router
@@ -41,7 +40,6 @@ for router in (
     update_seed_router,
     track_router,
     update_track_router,
-    reextract_router,
     create_fit_router,
     list_fits_router,
     fit_by_id_router,

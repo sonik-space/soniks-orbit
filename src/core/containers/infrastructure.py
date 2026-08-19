@@ -18,7 +18,7 @@ from application.interfaces.repositories import (
     IdentificationRepository,
     SessionRepository,
 )
-from application.interfaces.tasks import ExtractionQueue, IdentificationQueue
+from application.interfaces.tasks import CalibrationQueue, IdentificationQueue
 from application.interfaces.transaction import Transaction
 from core.configs import settings
 from core.configs.app import AppSettings
@@ -41,7 +41,7 @@ from infrastructure.postgres.repositories.identification import (
 from infrastructure.postgres.repositories.session import SQLAlchemySessionRepository
 from infrastructure.postgres.transaction import SQLAlchemyTransaction
 from infrastructure.tasks.queue import (
-    TaskiqExtractionQueue,
+    TaskiqCalibrationQueue,
     TaskiqIdentificationQueue,
 )
 
@@ -110,7 +110,7 @@ def gateway_provider() -> Provider:
     provider.provide(
         SQLAlchemyIdentificationRepository, provides=IdentificationRepository
     )
-    provider.provide(TaskiqExtractionQueue, provides=ExtractionQueue)
+    provider.provide(TaskiqCalibrationQueue, provides=CalibrationQueue)
     provider.provide(TaskiqIdentificationQueue, provides=IdentificationQueue)
     return provider
 

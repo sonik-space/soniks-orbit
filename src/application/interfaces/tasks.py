@@ -1,4 +1,4 @@
-"""Постановка извлечения в очередь.
+"""Постановка фоновых задач в очередь.
 
 Интерфейс нужен затем, чтобы `application/` не знал про taskiq (правило 8),
 и чтобы в тестах очередь подменялась списком.
@@ -10,25 +10,20 @@ from typing import Protocol
 from uuid import UUID
 
 
-class ExtractionQueue(Protocol):
-    async def enqueue(
-        self,
-        session_uuid: UUID,
-        observation_id: int,
-        *,
-        snr_threshold: float | None = None,
-        bin_seconds: float | None = None,
-    ) -> None:
-        """`None` означает «взять умолчание из настроек» — те же, при которых
-        получен эталон 0.0250 кГц на 1527888."""
+class CalibrationQueue(Protocol):
+    async def enqueue(self, session_uuid: UUID, observation_id: int) -> None:
+        """Разбор картинки одного наблюдения сессии: рамка, деления, оси.
+
+        Точек задача не ставит — их ставит человек.
+        """
         ...
 
 
 class IdentificationQueue(Protocol):
-    async def enqueue(self, observation_id: int) -> None:
-        """Перебор по одному наблюдению.
+    async def enqueue(self, session_uuid: UUID, observation_id: int) -> None:
+        """Перебор по каталогу для одного размеченного наблюдения сессии.
 
-        Сессии здесь нет: идентификация работает по наблюдению, а сессия
-        появляется только при подтверждении (decisions/006).
+        Сессия здесь обязательна: перебирать можно только то, что человек
+        уже разметил, а разметка живёт в сессии (decisions/015).
         """
         ...

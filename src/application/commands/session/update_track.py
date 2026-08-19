@@ -14,7 +14,7 @@ import numpy as np
 from application.dtos.session import UpdateTrackRequest
 from application.interfaces.repositories import SessionRepository
 from application.interfaces.transaction import Transaction
-from application.services.extraction import measure_points
+from application.services.calibration import measure_points
 from domain.exceptions import BadRequestError, NotFoundError
 
 
@@ -65,8 +65,6 @@ class UpdateTrackInteractor:
                 "enabled": p.enabled,
                 "source": list(p.source),
             },
-            diagnostics=m.diagnostics(
-                (track.diagnostics or {}).get("overlay_frac", 0.0)
-            ),
+            diagnostics=m.diagnostics(),
         )
         await self._transaction.commit()

@@ -46,7 +46,7 @@
 
 | Инструмент | Что делал | Чем заменён |
 |---|---|---|
-| `soniks-waterfall-tabulation-helper` | клики по водопаду → `.dat` | автоизвлечение трека + панель правки |
+| `soniks-waterfall-tabulation-helper` | клики по водопаду → `.dat` | те же клики, но с калибровкой, фитом и публикацией |
 | `strf/rffit` | интерактивный фит через PGPLOT/X11 | `domain/od/fit.py` + панель невязок |
 | `ikhnosoniks` | наложение предсказанной кривой | модельная кривая поверх водопада |
 | `sattools/propagate` | перенос эпохи TLE | `domain/od/reepoch.py` |

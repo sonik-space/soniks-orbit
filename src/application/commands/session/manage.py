@@ -18,7 +18,7 @@ from uuid import UUID
 from application.dtos.session import AddObservationsRequest
 from application.interfaces.network_api import NetworkApi
 from application.interfaces.repositories import SessionRepository
-from application.interfaces.tasks import ExtractionQueue
+from application.interfaces.tasks import CalibrationQueue
 from application.interfaces.transaction import Transaction
 from domain.exceptions import ConflictError, NotFoundError
 from domain.models import OdSession
@@ -29,7 +29,7 @@ class AddObservationsInteractor:
         self,
         repo: SessionRepository,
         network_api: NetworkApi,
-        queue: ExtractionQueue,
+        queue: CalibrationQueue,
         transaction: Transaction,
         logger: Logger,
     ) -> None:

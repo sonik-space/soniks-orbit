@@ -257,11 +257,3 @@ class TrackPointsRequest(BaseModel):
 
 class UpdateTrackRequest(BaseModel):
     points: TrackPointsRequest
-
-
-class ReextractRequest(BaseModel):
-    """Параметры повторного извлечения. Умолчания — из `core/configs/waterfall.py`,
-    те же, при которых получен эталон 0.0250 кГц на 1527888."""
-
-    snr_threshold: float | None = Field(default=None, gt=0.0)
-    bin_seconds: float | None = Field(default=None, gt=0.0)

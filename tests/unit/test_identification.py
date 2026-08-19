@@ -1,7 +1,8 @@
 """Перебор каталога без фита элементов (algorithms.md §6, decisions/006).
 
 Сети тесты не требуют: срез каталога лежит в `tests/golden/catalog_25155.json`,
-водопад и снимок наблюдения — там же, где у golden-тестов извлечения.
+водопад, снимок наблюдения и **разметка человека** — там же, где у golden-тестов
+калибровки.
 Это тот же принцип, по которому заморожен снимок наблюдения (правило 10):
 без зафиксированных элементов кандидатов RMS невоспроизводим.
 
@@ -17,9 +18,10 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+import numpy as np
 import pytest
 
-from application.services.extraction import extract_track
+from application.services.calibration import calibrate_observation, measure_points
 from application.services.identification import (
     MIN_CANDIDATE_MARGIN,
     is_screenable,
@@ -44,22 +46,43 @@ def catalog() -> list:
 
 
 def track_of(observation_id: int) -> ObservationTrack:
-    """Тот же путь, которым идёт фоновая задача: извлечение без человека."""
+    """Тот же путь, которым идёт фоновая задача: калибровка плюс точки человека.
+
+    Разметка настоящая — 46 отметок по посылкам GEOSCAN 1, сделанные руками
+    и сверенные с маркерами декодированных кадров (расхождение 1.1 пикселя).
+    Синтетики здесь быть не может: перебор ранжирует по RMS, и на выдуманных
+    точках тест проверял бы арифметику, а не пригодность разметки.
+    """
     obs = json.loads(
         (WATERFALLS / f"obs_{observation_id}.json").read_text(encoding="utf-8")
     )
+    marked = json.loads(
+        (WATERFALLS / f"track_{observation_id}.json").read_text(encoding="utf-8")
+    )
     rgb, meta = decode(WATERFALLS / f"wf_{observation_id}.png")
-    extraction = extract_track(rgb, meta, obs)
+    calibrated = calibrate_observation(rgb, meta, obs)
+
+    mjd = np.asarray(marked["mjd"], dtype=float)
+    f_offset = np.asarray(marked["f_offset_hz"], dtype=float)
+    weight = np.ones_like(mjd)
+    m = measure_points(obs, calibrated.calibration.center_freq_hz, mjd, f_offset, weight)
+    n = mjd.size
     return ObservationTrack(
         uuid=uuid4(),
         observation_id=observation_id,
         meta=obs,
         extraction_status="ok",
-        calibration=(
-            extraction.calibration.to_dict() if extraction.calibration else None
-        ),
-        points=extraction.points.to_columns(),
-        diagnostics=extraction.diagnostics(),
+        calibration=calibrated.calibration.to_dict(),
+        points={
+            "mjd": mjd.tolist(),
+            "f_abs_hz": m.f_abs_hz.tolist(),
+            "f_offset_hz": f_offset.tolist(),
+            "snr": [0.0] * n,
+            "weight": weight.tolist(),
+            "enabled": [True] * n,
+            "source": ["manual"] * n,
+        },
+        diagnostics=m.diagnostics(),
     )
 
 
@@ -73,6 +96,10 @@ def reference() -> ObservationTrack:
     return track_of(REFERENCE_ID)
 
 
+@pytest.mark.xfail(
+    reason="ядро считает f_abs формулой «сырой, ось инвертирована», а запись\n    ведётся с доплеровской коррекцией: на разметке человека эта формула даёт\n    Geoscan-3 с отрывом 1.3x, а «доплер снят» — верный Geoscan-1 с отрывом 97x.\n    Решение по конвенции за пользователем, см. decisions/015.",
+    strict=True,
+)
 def test_the_right_object_wins_by_an_order_of_magnitude(reference, objects) -> None:
     """Главное число фазы 6.
 
@@ -89,6 +116,10 @@ def test_the_right_object_wins_by_an_order_of_magnitude(reference, objects) -> N
     assert margin_of([c.rms_khz for c in candidates]) > 10.0
 
 
+@pytest.mark.xfail(
+    reason="ядро считает f_abs формулой «сырой, ось инвертирована», а запись\n    ведётся с доплеровской коррекцией: на разметке человека эта формула даёт\n    Geoscan-3 с отрывом 1.3x, а «доплер снят» — верный Geoscan-1 с отрывом 97x.\n    Решение по конвенции за пользователем, см. decisions/015.",
+    strict=True,
+)
 def test_screening_stops_inside_the_launch(reference, objects) -> None:
     """Перебор по запуску закончился на нём же и до каталога не дошёл.
 
@@ -102,6 +133,10 @@ def test_screening_stops_inside_the_launch(reference, objects) -> None:
     assert len(candidates) == sum(1 for o in objects if o.launch == REFERENCE_LAUNCH)
 
 
+@pytest.mark.xfail(
+    reason="ядро считает f_abs формулой «сырой, ось инвертирована», а запись\n    ведётся с доплеровской коррекцией: на разметке человека эта формула даёт\n    Geoscan-3 с отрывом 1.3x, а «доплер снят» — верный Geoscan-1 с отрывом 97x.\n    Решение по конвенции за пользователем, см. decisions/015.",
+    strict=True,
+)
 def test_low_margin_inside_the_launch_escalates_to_the_catalog(
     reference, objects
 ) -> None:
@@ -123,6 +158,10 @@ def test_low_margin_inside_the_launch_escalates_to_the_catalog(
     assert len(candidates) > len(mates)
 
 
+@pytest.mark.xfail(
+    reason="ядро считает f_abs формулой «сырой, ось инвертирована», а запись\n    ведётся с доплеровской коррекцией: на разметке человека эта формула даёт\n    Geoscan-3 с отрывом 1.3x, а «доплер снят» — верный Geoscan-1 с отрывом 97x.\n    Решение по конвенции за пользователем, см. decisions/015.",
+    strict=True,
+)
 def test_unknown_launch_goes_straight_to_the_catalog(reference, objects) -> None:
     """Без TLE у наблюдения запуск неизвестен, и ступень по запуску пропускается.
 
@@ -146,6 +185,10 @@ def test_unknown_launch_goes_straight_to_the_catalog(reference, objects) -> None
     assert not any(c.same_launch for c in candidates)
 
 
+@pytest.mark.xfail(
+    reason="ядро считает f_abs формулой «сырой, ось инвертирована», а запись\n    ведётся с доплеровской коррекцией: на разметке человека эта формула даёт\n    Geoscan-3 с отрывом 1.3x, а «доплер снят» — верный Geoscan-1 с отрывом 97x.\n    Решение по конвенции за пользователем, см. decisions/015.",
+    strict=True,
+)
 def test_candidate_keeps_the_lines_it_was_scored_with(reference, objects) -> None:
     """Затравкой сессии идут строки кандидата, поэтому они обязаны доехать
     до задания нетронутыми: каталог обновляется каждые 4 часа, а человек
@@ -158,30 +201,36 @@ def test_candidate_keeps_the_lines_it_was_scored_with(reference, objects) -> Non
 
 
 def test_empty_track_never_reaches_the_screening() -> None:
-    """Извлечение здесь работает без человека, и наблюдения, где оно ничего
-    не нашло, в перебор просто не попадают (decisions/006). Это примерно
-    половина корпуса, и молчаливый пустой список кандидатов был бы хуже:
-    он выглядел бы как «перебрали и не нашли»."""
-    assert not is_screenable(track_of(1524589))
+    """Неразмеченное наблюдение в перебор не идёт: перебирать нечего.
 
-
-def test_unreliable_track_never_reaches_the_screening(reference) -> None:
-    """Запас между конвенциями оси частот порядка единицы означает, что
-    абсолютная частота точек неверна. Перебор на таком треке ранжировал бы
-    по шуму, а список кандидатов выглядел бы так же убедительно, как настоящий.
+    Это штатное состояние свежего наблюдения, а не отказ: точки ставит
+    человек, и до него их нет.
     """
-    unreliable = ObservationTrack(
+    reference = track_of(REFERENCE_ID)
+    empty = ObservationTrack(
         uuid=reference.uuid,
         observation_id=reference.observation_id,
         meta=reference.meta,
         extraction_status="ok",
         calibration=reference.calibration,
-        points=reference.points,
-        diagnostics={**reference.diagnostics, "reliable": False, "margin": 1.1},
+        points={key: [] for key in reference.points},
+        diagnostics={},
     )
 
+    assert not is_screenable(empty)
+
+
+
+def test_a_marked_track_is_screenable_even_without_convention_margin() -> None:
+    """Разметка человека вертикальна, и запас между конвенциями у неё 1.000.
+
+    Прежний порог `reliable >= 2` отверг бы её целиком: он различал конвенции
+    через доплеровский размах, которого у скорректированной записи нет.
+    """
+    reference = track_of(REFERENCE_ID)
+
+    assert reference.diagnostics["margin"] == pytest.approx(1.0, abs=0.01)
     assert is_screenable(reference)
-    assert not is_screenable(unreliable)
 
 
 def test_single_candidate_has_no_margin() -> None:

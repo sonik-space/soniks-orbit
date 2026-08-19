@@ -69,9 +69,7 @@ soniks-orbit/
 │   │   │   └── tle.py          разбор и сборка строк, контрольная сумма, alpha-5
 │   │   ├── waterfall/
 │   │   │   ├── metadata.py     разбор satnogs:wf-dat / wf-signal
-│   │   │   ├── axes.py         детекция рамки осей и делений оси времени
-│   │   │   ├── colormap.py     LUT из colorbar, маска оверлеев
-│   │   │   └── ridge.py        поиск гребня
+│   │   │   └── axes.py         детекция рамки осей и делений оси времени
 │   │   ├── models.py           доменные модели
 │   │   └── exceptions.py
 │   │
@@ -81,7 +79,7 @@ soniks-orbit/
 │   │   ├── dtos/
 │   │   ├── commands/         session/*, fit/*, identification/*
 │   │   ├── queries/
-│   │   └── services/         extraction.py, fitting.py, identification.py
+│   │   └── services/         calibration.py, fitting.py, identification.py
 │   │
 │   ├── infrastructure/
 │   │   ├── network_api/      httpx-клиент к боевому Django
@@ -125,7 +123,7 @@ presentation  →  application  →  domain
 
 ### Единственное место сшивки
 
-`application/services/extraction.py` — единственное место, где цепочка
+`application/services/calibration.py` — единственное место, где цепочка
 «скачать PNG → декодировать → откалибровать → извлечь гребень → снять доплер»
 собирается воедино. Если эта последовательность появилась ещё где-то,
 это ошибка, а не оптимизация.

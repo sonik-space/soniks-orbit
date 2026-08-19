@@ -15,7 +15,6 @@ import pytest
 
 from application.commands.session.update_track import UpdateTrackInteractor
 from application.dtos.session import TrackPointsRequest, UpdateTrackRequest
-from application.services.extraction import merge_manual
 from domain.exceptions import BadRequestError
 from domain.models import ObservationTrack
 
@@ -119,36 +118,3 @@ def test_columns_of_different_length_are_rejected() -> None:
             source=["manual", "manual"],
             weight=[1.0, 1.0],
         )
-
-
-def test_reextraction_keeps_manual_points_and_sorts_by_time() -> None:
-    """Ручные точки переживают повтор, автоматические заменяются целиком."""
-    previous = {
-        "mjd": [1.0, 2.0, 3.0],
-        "f_abs_hz": [10.0, 20.0, 30.0],
-        "f_offset_hz": [1.0, 2.0, 3.0],
-        "snr": [5.0, 6.0, 7.0],
-        "weight": [1.0, 1.0, 1.0],
-        "enabled": [True, True, True],
-        "source": ["auto", "manual", "auto"],
-    }
-    fresh = {
-        "mjd": [1.5, 2.5],
-        "f_abs_hz": [15.0, 25.0],
-        "f_offset_hz": [1.5, 2.5],
-        "snr": [8.0, 9.0],
-        "weight": [1.0, 1.0],
-        "enabled": [True, True],
-        "source": ["auto", "auto"],
-    }
-
-    merged = merge_manual(previous, fresh)
-
-    assert merged["mjd"] == [1.5, 2.0, 2.5]
-    assert merged["source"] == ["auto", "manual", "auto"]
-    assert merged["f_abs_hz"] == [15.0, 20.0, 25.0]
-
-
-def test_first_extraction_merges_nothing() -> None:
-    fresh = {"mjd": [1.0], "source": ["auto"]}
-    assert merge_manual(None, fresh) is fresh

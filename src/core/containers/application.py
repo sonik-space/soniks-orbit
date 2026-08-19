@@ -14,7 +14,6 @@ from application.commands.session.manage import (
     DeleteSessionInteractor,
     RemoveObservationInteractor,
 )
-from application.commands.session.reextract import ReextractInteractor
 from application.commands.session.update_seed import UpdateSeedInteractor
 from application.commands.session.update_track import UpdateTrackInteractor
 from application.queries.fit.by_id import GetFitRunQuery
@@ -36,7 +35,6 @@ def application_provider() -> Provider:
         DeleteSessionInteractor,
         UpdateSeedInteractor,
         UpdateTrackInteractor,
-        ReextractInteractor,
         GetSessionQuery,
         GetTrackQuery,
         ListSessionsQuery,

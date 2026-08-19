@@ -162,7 +162,7 @@ infrastructure → (реализует интерфейсы из application/int
   Никакой логики.
 - `application/` — оркестрация. Знает про `domain` и про **интерфейсы**
   инфраструктуры, но не про `httpx`, `sqlalchemy`, `PIL`.
-- `application/services/extraction.py` — **единственное** место, где сшиваются
+- `application/services/calibration.py` — **единственное** место, где сшиваются
   загрузка PNG → декодирование → калибровка → извлечение → снятие доплера.
   Если эта цепочка появилась где-то ещё, это ошибка.
 - `infrastructure/` — реализации: HTTP-клиент к СОНИКС, PIL, репозитории, taskiq.
